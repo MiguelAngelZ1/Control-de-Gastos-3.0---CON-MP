@@ -1280,7 +1280,9 @@ input, textarea, select {
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-}uted);
+}
+
+.donut-chart-label {
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
