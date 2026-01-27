@@ -276,11 +276,11 @@ const FixedModule = {
                     <div class="data-row">
                         <div class="data-field">
                             <span class="label">EMPRESA</span>
-                            <span class="value" id="display-provider">${invoiceData.provider?.name || invoiceData.provider || 'No identificada'}</span>
+                            <span class="value" id="display-provider">${invoiceData.provider?.name || (typeof invoiceData.provider === 'string' ? invoiceData.provider : null) || invoiceData.providerName || 'No identificada'}</span>
                         </div>
                         <div class="data-field">
                             <span class="label">TITULAR</span>
-                            <span class="value" id="display-titular">${invoiceData.customerName || invoiceData.titular || 'No detectado'}</span>
+                            <span class="value" id="display-titular">${invoiceData.titular || invoiceData.customerName || 'No detectado'}</span>
                         </div>
                     </div>
                     <div class="data-row highlight-row">

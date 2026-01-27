@@ -28,14 +28,20 @@ const UI = {
      * Bindea eventos globales
      */
     bindGlobalEvents() {
-        // Toggle sidebar en móvil (Header principal y Header móvil)
+        // Toggle sidebar en móvil
         const menuToggle = document.getElementById('menu-toggle');
-        const mobileToggle = document.getElementById('mobile-menu-toggle');
         const overlay = document.getElementById('sidebar-overlay');
 
-        if (menuToggle) menuToggle.addEventListener('click', () => this.toggleSidebar());
-        if (mobileToggle) mobileToggle.addEventListener('click', () => this.toggleSidebar());
-        if (overlay) overlay.addEventListener('click', () => this.closeSidebar());
+        if (menuToggle) {
+            menuToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleSidebar();
+            });
+        }
+        
+        if (overlay) {
+            overlay.addEventListener('click', () => this.closeSidebar());
+        }
 
         // Cerrar sidebar al hacer click fuera
         document.addEventListener('click', (e) => {

@@ -3678,27 +3678,24 @@ input[type="date"]:valid::before {
     .main-content {
         margin-left: 0 !important;
         padding: var(--space-4);
-        padding-top: 70px; /* Espacio para el header móvil */
+        padding-top: 80px; /* Espacio para el header principal */
     }
 
-    .mobile-header {
+    .main-header {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
-        height: 60px;
-        background: var(--bg-secondary);
-        display: flex;
-        align-items: center;
-        padding: 0 var(--space-4);
         z-index: 1000;
+        background: var(--bg-primary);
+        padding: var(--space-3) var(--space-4);
         border-bottom: 1px solid var(--border-color);
+        display: flex !important; /* Asegurar visibilidad */
     }
 
-    .mobile-logo {
-        margin-left: var(--space-3);
-        font-weight: 700;
-        color: var(--accent-primary);
+    .menu-toggle {
+        display: flex !important; /* Mostrar botón de menú */
+        margin-right: var(--space-3);
     }
 
     .sidebar-overlay {
