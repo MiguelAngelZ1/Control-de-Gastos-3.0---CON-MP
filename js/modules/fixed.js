@@ -271,8 +271,26 @@ const FixedModule = {
 
                     <div class="barcode-section">
                         ${hasBarcode ? `
-                            <div class="barcode-visual">
-                                <svg id="generated-barcode"></svg>
+                            <div class="barcode-container">
+                                <div class="barcode-visual">
+                                    <svg id="generated-barcode"></svg>
+                                </div>
+                                <div class="barcode-length-indicator ${
+                                    invoiceData.barcode.length >= 40 && invoiceData.barcode.length <= 60 
+                                        ? 'valid' 
+                                        : 'warning'
+                                }">
+                                    <i class="bi ${
+                                        invoiceData.barcode.length >= 40 && invoiceData.barcode.length <= 60 
+                                            ? 'bi-check-circle-fill' 
+                                            : 'bi-exclamation-triangle-fill'
+                                    }"></i>
+                                    <span>${invoiceData.barcode.length} dígitos ${
+                                        invoiceData.barcode.length >= 40 && invoiceData.barcode.length <= 60 
+                                            ? '(óptimo)' 
+                                            : ''
+                                    }</span>
+                                </div>
                             </div>
                             <div class="barcode-actions">
                                 <div class="barcode-text-group">
@@ -281,11 +299,15 @@ const FixedModule = {
                                         <i class="bi bi-clipboard"></i>
                                     </button>
                                 </div>
-                                <p class="help-text"><i class="bi bi-phone"></i> Escaneá con tu app bancaria o copiá el código</p>
+                                <p class="help-text">
+                                    <i class="bi bi-phone"></i> 
+                                    Escaneá con tu app bancaria o copiá el código
+                                </p>
                             </div>
                         ` : `
-                            <div class="alert alert-warning">
-                                <i class="bi bi-exclamation-triangle"></i> No se detectó código de barras.
+                            <div class="alert alert-warning" style="display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); background: var(--accent-warning-soft); border-radius: var(--radius-lg); color: var(--accent-warning);">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <span>No se detectó código de barras en la factura.</span>
                             </div>
                         `}
                     </div>
@@ -320,16 +342,59 @@ const FixedModule = {
             // Generar código de barras visual si existe
             if (hasBarcode && typeof JsBarcode !== 'undefined') {
                 try {
-                    JsBarcode("#generated-barcode", invoiceData.barcode, {
+                    const barcodeValue = invoiceData.barcode.replace(/\s/g, '');
+                    const barcodeLength = barcodeValue.length;
+        
+                    // Configuración adaptativa según longitud del código
+                    let barcodeConfig = {
                         format: "CODE128",
-                        lineColor: "#000",
-                        width: 2,
-                        height: 60,
-                        displayValue: false,
-                        margin: 10
-                    });
+                        lineColor: "#000000",
+                        background: "#ffffff",
+                        height: 50,
+                        displayValue: true,
+                        fontSize: 10,
+                        margin: 8,
+                        textMargin: 3,
+                        width: 1.5
+                    };
+        
+                    // Ajustar ancho según longitud (optimizado para 40-60 dígitos)
+                    if (barcodeLength >= 55) {
+                        barcodeConfig.width = 0.7;
+                        barcodeConfig.fontSize = 6;
+                        barcodeConfig.height = 40;
+                        barcodeConfig.displayValue = false;
+                    } else if (barcodeLength >= 50) {
+                        barcodeConfig.width = 0.8;
+                        barcodeConfig.fontSize = 7;
+                        barcodeConfig.height = 45;
+                    } else if (barcodeLength >= 45) {
+                        barcodeConfig.width = 0.9;
+                        barcodeConfig.fontSize = 8;
+                        barcodeConfig.height = 48;
+                    } else if (barcodeLength >= 40) {
+                        barcodeConfig.width = 1;
+                        barcodeConfig.fontSize = 8;
+                    } else if (barcodeLength >= 30) {
+                        barcodeConfig.width = 1.15;
+                        barcodeConfig.fontSize = 9;
+                    }
+        
+                    JsBarcode("#generated-barcode", barcodeValue, barcodeConfig);
+        
+                    console.log(`✅ Código de barras: ${barcodeLength} dígitos, width: ${barcodeConfig.width}`);
+        
                 } catch (e) {
                     console.error("Error generando barcode:", e);
+                    const barcodeContainer = document.querySelector('.barcode-visual');
+                    if (barcodeContainer) {
+                        barcodeContainer.innerHTML = `
+                            <div class="barcode-fallback">
+                                <i class="bi bi-upc-scan"></i>
+                                <code>${invoiceData.barcode}</code>
+                            </div>
+                        `;
+                    }
                 }
             }
 

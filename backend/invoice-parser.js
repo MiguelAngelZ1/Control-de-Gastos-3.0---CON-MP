@@ -610,50 +610,60 @@ class InvoiceParser {
 
     /**
      * PASO 2C: Extraer TODOS los posibles códigos de barras
+     * ACTUALIZADO: Busca hasta 65 dígitos para capturar códigos largos
      */
     extractAllBarcodes() {
         const barcodes = [];
-        
-        // Buscar secuencias de dígitos de 20+ caracteres
-        const pattern = /\b(\d{20,50})\b/g;
+    
+        // Buscar secuencias de dígitos de 20-65 caracteres
+        const pattern = /\b(\d{20,65})\b/g;
         let match;
-        
+    
         while ((match = pattern.exec(this.text)) !== null) {
             const code = match[1];
             const position = match.index;
-            const context = this.getContext(position, 50);
-            
-            // Validar que no sea un número de teléfono, CUIT, etc.
+            const context = this.getContext(position, 80);
+        
             if (!this.isInvalidBarcode(code, context)) {
+                const isPreferred = code.length >= 40 && code.length <= 60;
+            
                 barcodes.push({
                     value: code,
                     length: code.length,
                     position,
                     context,
-                    line: this.getLineNumber(position)
+                    line: this.getLineNumber(position),
+                    isPreferred: isPreferred
                 });
+            
+                if (isPreferred) {
+                    this.log(`  🎯 Código preferido (40-60): ${code.substring(0, 20)}... (${code.length} dígitos)`);
+                }
             }
         }
 
-        // También buscar códigos separados por espacios que podrían ser un código de barras
-        const spacedPattern = /\b(\d{4,6}[\s]){4,10}\d{4,6}\b/g;
+        // Buscar códigos separados por espacios
+        const spacedPattern = /\b(\d{4,8}[\s]+){5,}\d{4,8}\b/g;
         while ((match = spacedPattern.exec(this.text)) !== null) {
             const code = match[0].replace(/\s/g, '');
-            if (code.length >= 20 && code.length <= 50) {
+            if (code.length >= 20 && code.length <= 65) {
                 const position = match.index;
-                barcodes.push({
-                    value: code,
-                    length: code.length,
-                    position,
-                    context: this.getContext(position, 50),
-                    line: this.getLineNumber(position),
-                    wasSpaced: true
-                });
+                if (!barcodes.some(b => b.value === code)) {
+                    barcodes.push({
+                        value: code,
+                        length: code.length,
+                        position,
+                        context: this.getContext(position, 80),
+                        line: this.getLineNumber(position),
+                        wasSpaced: true,
+                        isPreferred: code.length >= 40 && code.length <= 60
+                    });
             }
         }
-
-        return this.removeDuplicates(barcodes, 'value');
     }
+
+    return this.removeDuplicates(barcodes, 'value');
+}
 
     /**
      * PASO 3A: Asignar scores a los montos basado en contexto
@@ -763,75 +773,82 @@ class InvoiceParser {
         }).sort((a, b) => b.score - a.score);
     }
 
-    /**
-     * PASO 3C: Asignar scores a los códigos de barras
-     */
-    scoreBarcodes(barcodes) {
-        return barcodes.map(barcode => {
-            let score = 50;
-            const context = barcode.context.toLowerCase();
-            const reasons = [];
+/**
+ * PASO 3C: Asignar scores a los códigos de barras
+ * ACTUALIZADO: Fuerte preferencia por códigos de 40-60 dígitos
+ */
+scoreBarcodes(barcodes) {
+    return barcodes.map(barcode => {
+        let score = 50;
+        const context = barcode.context.toLowerCase();
+        const reasons = [];
 
-            // Verificar longitud válida para códigos de servicios argentinos
-            const validLengths = [23, 30, 40, 44, 48, 56, 58]; // Agregados largos comunes
-            if (validLengths.includes(barcode.length)) {
-                score += 30;
-                reasons.push(`+30: longitud válida (${barcode.length})`);
-            }
+        // PRIORIDAD MÁXIMA: códigos de 40-60 dígitos (Interbanking/PMC)
+        if (barcode.length >= 40 && barcode.length <= 60) {
+            score += 80;
+            reasons.push(`+80: longitud ideal para Interbanking/PMC (${barcode.length} dígitos)`);
+        }
+        // Longitudes válidas secundarias
+        else if ([23, 30, 44, 48].includes(barcode.length)) {
+            score += 25;
+            reasons.push(`+25: longitud válida (${barcode.length})`);
+        }
 
-            // PREFERENCIA FUERTE por códigos largos (Interbanking/PMC suelen ser >40)
-            if (barcode.length > 40) {
-                score += 50; // Mucho más peso a códigos largos
-                reasons.push('+50: longitud extendida (>40)');
-            }
+        // Contexto positivo - palabras clave de pago electrónico
+        if (context.includes('interbanking')) {
+            score += 40;
+            reasons.push('+40: contexto "interbanking"');
+        }
+        if (context.includes('pmc') || context.includes('pagomiscuentas') || context.includes('pago mis cuentas')) {
+            score += 40;
+            reasons.push('+40: contexto "PMC/PagoMisCuentas"');
+        }
+        if (context.includes('pago electrónico') || context.includes('pago electronico')) {
+            score += 30;
+            reasons.push('+30: contexto "pago electrónico"');
+        }
+        if (context.includes('código de barras') || context.includes('codigo de barras')) {
+            score += 25;
+            reasons.push('+25: contexto "código de barras"');
+        }
+        if (context.includes('barras')) {
+            score += 15;
+            reasons.push('+15: contexto "barras"');
+        }
+        if (context.includes('pago') || context.includes('pagar')) {
+            score += 20;
+            reasons.push('+20: contexto "pago"');
+        }
 
-            // Si tenemos proveedor, verificar que coincida
-            if (this.provider && this.provider.barcodeLength) {
-                if (this.provider.barcodeLength.includes(barcode.length)) {
-                    score += 20;
-                    reasons.push('+20: longitud coincide con proveedor');
-                }
-            }
+        // Penalizaciones
+        if (context.includes('cuenta') && !context.includes('pagomiscuentas')) {
+            score -= 30;
+            reasons.push('-30: parece nro de cuenta');
+        }
+        if (context.includes('cliente n') || context.includes('nro cliente')) {
+            score -= 40;
+            reasons.push('-40: parece nro de cliente');
+        }
+        if (context.includes('factura n') || context.includes('nro factura')) {
+            score -= 35;
+            reasons.push('-35: parece nro de factura');
+        }
 
-            // Contexto positivo
-            if (context.includes('código') || context.includes('codigo')) {
-                score += 15;
-                reasons.push('+15: contexto "código"');
-            }
-            if (context.includes('barras')) {
-                score += 20;
-                reasons.push('+20: contexto "barras"');
-            }
-            if (context.includes('pago') || context.includes('pagar')) {
-                score += 25;
-                reasons.push('+25: contexto "pago"');
-            }
+        // Penalizar códigos muy cortos
+        if (barcode.length < 20) {
+            score -= 40;
+            reasons.push('-40: código muy corto');
+        }
 
-            // Penalizar si parece un número de cuenta o cliente
-            if (context.includes('cuenta') || context.includes('cliente')) {
-                score -= 40;
-                reasons.push('-40: parece nro de cuenta/cliente');
-            }
+        this.log(`Código ${barcode.value.substring(0, 20)}... (${barcode.length} díg) -> Score: ${score}`);
 
-            // Validar checksum si es código de 23 dígitos (estándar argentino)
-            if (barcode.length === 23) {
-                // Los códigos de pago argentinos suelen empezar con ciertos prefijos
-                const prefix = barcode.substring(0, 2);
-                if (['02', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29'].includes(prefix)) {
-                    score += 15;
-                    reasons.push('+15: prefijo válido');
-                }
-            }
-
-            this.log(`Código ${barcode.value.substring(0, 15)}... -> Score: ${score} [${reasons.join(', ')}]`);
-
-            return {
-                ...barcode,
-                score: Math.max(0, Math.min(100, score)),
-                reasons
-            };
-        }).sort((a, b) => b.score - a.score);
-    }
+        return {
+            ...barcode,
+            score: Math.max(0, Math.min(100, score)),
+            reasons
+        };
+    }).sort((a, b) => b.score - a.score);
+}
 
     /**
      * PASO 4A: Seleccionar el mejor monto

@@ -23,11 +23,7 @@ const Jimp = require('jimp');
 
 /**
  * Valida si un string podría ser un código de barras de servicio argentino
- * 
- * Los códigos de barras de servicios argentinos típicamente:
- * - Tienen entre 23 y 48 dígitos
- * - Son solo numéricos
- * - Pueden tener estructura específica según el servicio
+ * ACTUALIZADO: Preferencia por códigos de 40-60 dígitos (Interbanking/PMC)
  * 
  * @param {string} code - Código a validar
  * @returns {Object} Resultado de validación
@@ -44,53 +40,64 @@ function validateBarcode(code) {
         return { valid: false, reason: 'Código muy corto' };
     }
     
-    if (cleaned.length > 60) {
+    if (cleaned.length > 65) {
         return { valid: false, reason: 'Código muy largo' };
     }
     
-    // Patrones conocidos de códigos de barras argentinos
-    const patterns = {
-        // Código de barras de facturas de servicios (típicamente 23-48 dígitos)
-        servicio: /^\d{23,48}$/,
-        // Código de pago electrónico
-        pagoElectronico: /^\d{19,23}$/,
-        // CBU
-        cbu: /^\d{22}$/
-    };
-    
+    // Determinar tipo de código
     let type = 'unknown';
+    let priority = 0;
     
-    if (patterns.cbu.test(cleaned)) {
-        type = 'cbu';
-    } else if (patterns.servicio.test(cleaned)) {
+    // PRIORIDAD ALTA: Códigos de 40-60 dígitos (Interbanking/PMC)
+    if (cleaned.length >= 40 && cleaned.length <= 60) {
+        type = 'interbanking_pmc';
+        priority = 100; // Máxima prioridad
+    }
+    // Código de barras estándar de servicios (23-39 dígitos)
+    else if (cleaned.length >= 23 && cleaned.length < 40) {
         type = 'service_barcode';
-    } else if (patterns.pagoElectronico.test(cleaned)) {
+        priority = 50;
+    }
+    // CBU (22 dígitos)
+    else if (cleaned.length === 22) {
+        type = 'cbu';
+        priority = 30;
+    }
+    // Código de pago electrónico corto (19-22 dígitos)
+    else if (cleaned.length >= 19 && cleaned.length < 23) {
         type = 'electronic_payment';
-    } else if (/^\d{10,}$/.test(cleaned)) {
+        priority = 40;
+    }
+    // Otros códigos numéricos
+    else if (/^\d{10,}$/.test(cleaned)) {
         type = 'numeric_code';
+        priority = 10;
     }
     
     return {
         valid: true,
         cleaned: cleaned,
         length: cleaned.length,
-        type: type
+        type: type,
+        priority: priority,
+        isPreferred: cleaned.length >= 40 && cleaned.length <= 60
     };
 }
 
 /**
  * Extrae códigos de barras del texto OCR
- * Esta es la forma más confiable para facturas argentinas
+ * ACTUALIZADO: Prioriza códigos de 40-60 dígitos
  * 
  * @param {string} ocrText - Texto del OCR
  * @returns {Array} Lista de códigos encontrados
  */
 function extractBarcodesFromText(ocrText) {
     console.log('\n🔎 Buscando códigos de barras en texto OCR...');
+    console.log('   🎯 Prioridad: códigos de 40-60 dígitos (Interbanking/PMC)');
     
     const codes = [];
     
-    // Buscar secuencias largas de dígitos
+    // Buscar secuencias largas de dígitos (15+ caracteres)
     const digitSequences = ocrText.match(/\d{15,}/g) || [];
     
     console.log(`   Secuencias numéricas encontradas: ${digitSequences.length}`);
@@ -103,61 +110,83 @@ function extractBarcodesFromText(ocrText) {
                 code: validation.cleaned,
                 length: validation.length,
                 type: validation.type,
+                priority: validation.priority,
+                isPreferred: validation.isPreferred,
                 source: 'ocr_text',
                 confidence: calculateBarcodeConfidence(sequence, ocrText)
             });
-        }
-    }
-    
-    // Buscar patrones específicos con contexto
-    const contextPatterns = [
-        /(?:código|codigo|cód|cod)[\s:]+(\d{10,})/gi,
-        /(?:barras?)[\s:]+(\d{10,})/gi,
-        /(?:pago|pagar)[\s:]+(\d{10,})/gi
-    ];
-    
-    for (const pattern of contextPatterns) {
-        let match;
-        while ((match = pattern.exec(ocrText)) !== null) {
-            const validation = validateBarcode(match[1]);
-            if (validation.valid && !codes.some(c => c.code === validation.cleaned)) {
-                codes.push({
-                    code: validation.cleaned,
-                    length: validation.length,
-                    type: validation.type,
-                    source: 'ocr_context',
-                    confidence: 0.8
-                });
+            
+            // Log especial para códigos preferidos
+            if (validation.isPreferred) {
+                console.log(`   ✅ Código preferido encontrado: ${validation.length} dígitos`);
             }
         }
     }
     
-    // Ordenar por longitud (códigos más largos primero, suelen ser los de pago)
-    codes.sort((a, b) => b.length - a.length);
+    // Buscar códigos separados por espacios que podrían ser un código de barras largo
+    const spacedPattern = /(\d{4,8}[\s]+){5,}\d{4,8}/g;
+    let match;
+    while ((match = spacedPattern.exec(ocrText)) !== null) {
+        const code = match[0].replace(/\s/g, '');
+        const validation = validateBarcode(code);
+        
+        if (validation.valid && !codes.some(c => c.code === validation.cleaned)) {
+            codes.push({
+                code: validation.cleaned,
+                length: validation.length,
+                type: validation.type,
+                priority: validation.priority,
+                isPreferred: validation.isPreferred,
+                source: 'ocr_spaced',
+                wasSpaced: true,
+                confidence: 0.85
+            });
+        }
+    }
+    
+    // Ordenar por prioridad (códigos de 40-60 dígitos primero)
+    codes.sort((a, b) => {
+        // Primero por prioridad
+        if (b.priority !== a.priority) return b.priority - a.priority;
+        // Si igual prioridad, por longitud (más largo = mejor)
+        return b.length - a.length;
+    });
     
     console.log(`   Códigos válidos encontrados: ${codes.length}`);
+    if (codes.length > 0 && codes[0].isPreferred) {
+        console.log(`   🎯 Mejor candidato: ${codes[0].length} dígitos (PREFERIDO)`);
+    }
     
     return codes;
 }
 
 /**
  * Calcula la confianza de un código de barras basado en contexto
+ * ACTUALIZADO: Bonus extra para códigos de 40-60 dígitos
  */
 function calculateBarcodeConfidence(code, fullText) {
     let confidence = 0.5;
     
-    // Código más largo = más probable que sea el de pago
-    if (code.length >= 30) confidence += 0.2;
-    if (code.length >= 40) confidence += 0.1;
+    // BONUS GRANDE para códigos de 40-60 dígitos
+    if (code.length >= 40 && code.length <= 60) {
+        confidence += 0.35;
+    } else if (code.length >= 30) {
+        confidence += 0.15;
+    }
     
     // Buscar si aparece cerca de palabras clave
     const codeIndex = fullText.indexOf(code);
     if (codeIndex !== -1) {
-        const context = fullText.substring(Math.max(0, codeIndex - 50), codeIndex).toLowerCase();
+        const contextBefore = fullText.substring(Math.max(0, codeIndex - 100), codeIndex).toLowerCase();
+        const contextAfter = fullText.substring(codeIndex, Math.min(fullText.length, codeIndex + code.length + 50)).toLowerCase();
+        const context = contextBefore + contextAfter;
         
-        if (context.includes('pagar') || context.includes('pago')) confidence += 0.2;
-        if (context.includes('código') || context.includes('codigo')) confidence += 0.1;
-        if (context.includes('barras')) confidence += 0.15;
+        // Palabras clave de alta prioridad
+        if (context.includes('interbanking')) confidence += 0.2;
+        if (context.includes('pmc') || context.includes('pagomiscuentas')) confidence += 0.2;
+        if (context.includes('pago electrónico') || context.includes('pago electronico')) confidence += 0.15;
+        if (context.includes('código de barras') || context.includes('codigo de barras')) confidence += 0.1;
+        if (context.includes('pagar') || context.includes('pago')) confidence += 0.1;
     }
     
     return Math.min(1, confidence);

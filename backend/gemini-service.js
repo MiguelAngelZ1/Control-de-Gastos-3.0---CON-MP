@@ -1,4 +1,3 @@
-
 const { GoogleGenAI } = require("@google/genai");
 require('dotenv').config();
 
@@ -26,19 +25,27 @@ const GeminiService = {
             console.log('🤖 Consultando a Gemini...');
             
             const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash-exp', // Usando modelo rápido y eficiente
-                contents: `Analiza el siguiente texto de una factura de servicios públicos de Argentina y extrae los datos requeridos en formato JSON.
-                
-                REGLAS IMPORTANTES:
-                1. Manten el formato JSON estricto.
-                2. Para "barcode": Busca la cadena de números más larga disponible (generalmente entre 40 y 60 dígitos). Es el código de barras para pago electrónico (Interbanking/PMC). NO uses el número de factura ni el código corto. Si hay espacios, elimínalos.
-                3. Para "amount": El total a pagar final. Usa formato numérico (float).
-                4. Para "dueDate": Fecha de vencimiento en formato YYYY-MM-DD.
-                5. Para "provider": Nombre de la empresa (ej: Edenor, Metrogas, Telecom, Personal, etc).
-                6. Para "reference": Número de referencia de pago o código de pago electrónico (si es distinto al barcode, sino usa el barcode o lo que sirva para identificar el pago).
+                model: 'gemini-2.0-flash-exp',
+                contents: `Eres un experto en facturas de servicios públicos de Argentina.
 
-                Texto extraído:
-                ${text.substring(0, 10000)}`, // Limitar longitud para evitar tokens excesivos
+TAREA: Analiza el texto de una factura y extrae los datos en formato JSON.
+
+REGLAS CRÍTICAS PARA EL CÓDIGO DE BARRAS:
+1. El código de barras para pago electrónico (Interbanking/PMC/PagoMisCuentas) tiene entre 40 y 60 dígitos.
+2. NO uses códigos cortos de 20-30 dígitos - esos son códigos internos.
+3. NO uses el número de factura ni el número de cliente.
+4. Busca la secuencia numérica MÁS LARGA disponible (generalmente cerca de "código de barras", "pago electrónico", "Interbanking" o al final de la factura).
+5. Elimina TODOS los espacios del código de barras.
+6. Si hay múltiples códigos largos, prefiere el que tenga 40+ dígitos.
+
+REGLAS PARA OTROS CAMPOS:
+- "amount": Total a pagar FINAL (número decimal, ej: 15420.50)
+- "dueDate": Fecha de vencimiento en formato YYYY-MM-DD
+- "provider": Nombre de la empresa (Edenor, Metrogas, Telecom, AySA, etc)
+- "reference": Número de referencia o código de pago electrónico corto
+
+Texto de la factura:
+${text.substring(0, 12000)}`,
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -58,11 +65,27 @@ const GeminiService = {
 
             const jsonStr = response.text();
             console.log('✅ Respuesta de Gemini recibida');
-            return JSON.parse(jsonStr);
+            
+            const parsed = JSON.parse(jsonStr);
+            
+            // Validar que el código de barras tenga la longitud correcta
+            if (parsed.barcode) {
+                const cleanBarcode = parsed.barcode.replace(/\s/g, '');
+                if (cleanBarcode.length >= 40 && cleanBarcode.length <= 60) {
+                    parsed.barcode = cleanBarcode;
+                    console.log(`✅ Código de barras válido: ${cleanBarcode.length} dígitos`);
+                } else {
+                    console.warn(`⚠️ Código de barras con longitud inesperada: ${cleanBarcode.length} dígitos`);
+                    // Aún así lo guardamos, pero marcamos la advertencia
+                    parsed.barcode = cleanBarcode;
+                    parsed.barcodeWarning = `Longitud: ${cleanBarcode.length} (esperado: 40-60)`;
+                }
+            }
+            
+            return parsed;
 
         } catch (error) {
             console.error('❌ Error en Gemini Service:', error);
-            // Retornar null para que el sistema use el parser local como fallback
             return null;
         }
     }
