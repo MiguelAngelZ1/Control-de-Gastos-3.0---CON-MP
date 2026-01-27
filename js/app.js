@@ -30,8 +30,10 @@ const App = {
             // Inicializar inputs de dinero
             Utils.initMoneyInputs();
 
-            // Inicializar selects con iconos
-            Utils.initIconSelects();
+            // Inicializar selects con iconos (si existiera la función)
+            if (typeof Utils.initIconSelects === 'function') {
+                Utils.initIconSelects();
+            }
 
             // Mostrar fecha completa en header
             this.updateHeaderDate();
