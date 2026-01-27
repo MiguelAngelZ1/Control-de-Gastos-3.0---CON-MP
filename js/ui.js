@@ -28,11 +28,14 @@ const UI = {
      * Bindea eventos globales
      */
     bindGlobalEvents() {
-        // Toggle sidebar en móvil
+        // Toggle sidebar en móvil (Header principal y Header móvil)
         const menuToggle = document.getElementById('menu-toggle');
-        if (menuToggle) {
-            menuToggle.addEventListener('click', () => this.toggleSidebar());
-        }
+        const mobileToggle = document.getElementById('mobile-menu-toggle');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        if (menuToggle) menuToggle.addEventListener('click', () => this.toggleSidebar());
+        if (mobileToggle) mobileToggle.addEventListener('click', () => this.toggleSidebar());
+        if (overlay) overlay.addEventListener('click', () => this.closeSidebar());
 
         // Cerrar sidebar al hacer click fuera
         document.addEventListener('click', (e) => {
@@ -128,7 +131,8 @@ const UI = {
      */
     openSidebar() {
         this.state.sidebarOpen = true;
-        document.querySelector('.sidebar')?.classList.add('open');
+        document.getElementById('sidebar')?.classList.add('active');
+        document.getElementById('sidebar-overlay')?.classList.add('active');
         document.body.classList.add('sidebar-open');
     },
 
@@ -137,7 +141,8 @@ const UI = {
      */
     closeSidebar() {
         this.state.sidebarOpen = false;
-        document.querySelector('.sidebar')?.classList.remove('open');
+        document.getElementById('sidebar')?.classList.remove('active');
+        document.getElementById('sidebar-overlay')?.classList.remove('active');
         document.body.classList.remove('sidebar-open');
     },
 

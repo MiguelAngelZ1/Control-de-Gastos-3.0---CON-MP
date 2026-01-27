@@ -3444,8 +3444,9 @@ input[type="date"]:valid::before {
 }
 
 .barcode-svg-wrapper svg {
-    max-width: 100%;
+    width: 100%;
     height: auto;
+    display: block;
 }
 
 .barcode-copy-wrapper {
@@ -3652,8 +3653,59 @@ input[type="date"]:valid::before {
 @media (max-width: 768px) {
     /* Sidebar responsivo */
     .sidebar {
-        width: 100%;
-        max-width: 300px;
+        position: fixed;
+        left: -100%;
+        top: 0;
+        height: 100vh;
+        width: 280px;
+        z-index: 1100;
+        transition: left 0.3s ease;
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    }
+    
+    .sidebar.active {
+        left: 0;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        padding: var(--space-4);
+        padding-top: 70px; /* Espacio para el header móvil */
+    }
+
+    .mobile-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: var(--bg-secondary);
+        display: flex;
+        align-items: center;
+        padding: 0 var(--space-4);
+        z-index: 1000;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .mobile-logo {
+        margin-left: var(--space-3);
+        font-weight: 700;
+        color: var(--accent-primary);
+    }
+
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        z-index: 1050;
+        display: none;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
     }
     
     /* Dashboard cards */

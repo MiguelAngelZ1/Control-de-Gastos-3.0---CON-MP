@@ -39,8 +39,8 @@ REGLAS CRÍTICAS PARA EL CÓDIGO DE BARRAS:
 6. Si hay múltiples códigos largos, prefiere el que tenga 40+ dígitos.
 
 REGLAS PARA OTROS CAMPOS:
-- "provider": Nombre de la empresa emisora (ej: Edenor, Metrogas, Telecom, AySA, Personal, Edesur, Naturgy, etc). Debe ser el nombre comercial.
-- "customerName": Nombre del titular del servicio. Suele estar cerca de la dirección o arriba de la factura. NO pongas "No detectado" si hay nombres propios en la cabecera.
+- "provider": Nombre de la empresa emisora (ej: Edenor, Metrogas, Telecom, AySA, Personal, Edesur, Naturgy, etc). Debe ser el nombre comercial. NO devuelvas "No identificado" si hay un nombre de empresa en el texto.
+- "customerName": Nombre del titular del servicio. Suele estar cerca de la dirección o arriba de la factura. Busca nombres propios (Ej: JUAN PEREZ). NO devuelvas "No detectado" si hay un nombre propio en la cabecera.
 - "amount": Total a pagar FINAL (número decimal, ej: 15420.50).
 - "dueDate": Fecha de vencimiento en formato YYYY-MM-DD.
 - "reference": Número de referencia o código de pago electrónico corto.
@@ -52,12 +52,12 @@ ${text.substring(0, 12000)}`,
                     responseSchema: {
                         type: "OBJECT",
                         properties: {
-                            provider: { type: "STRING" },
-                            customerName: { type: "STRING" },
+                            provider: { type: "STRING", description: "Nombre comercial de la empresa" },
+                            customerName: { type: "STRING", description: "Nombre completo del titular del servicio" },
                             invoiceNumber: { type: "STRING" },
-                            dueDate: { type: "STRING" },
-                            amount: { type: "NUMBER" },
-                            barcode: { type: "STRING" },
+                            dueDate: { type: "STRING", description: "Fecha en formato YYYY-MM-DD" },
+                            amount: { type: "NUMBER", description: "Monto total a pagar" },
+                            barcode: { type: "STRING", description: "Código de barras largo (40-60 dígitos)" },
                             reference: { type: "STRING" }
                         },
                         required: ["provider", "customerName", "dueDate", "amount", "barcode"]

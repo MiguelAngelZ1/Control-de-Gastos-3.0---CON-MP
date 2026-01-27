@@ -380,18 +380,36 @@ const FixedModule = {
                     format: "CODE128",
                     lineColor: "#000000",
                     background: "#ffffff",
-                    height: 50,
+                    height: 65, // Aumentado para mejor visibilidad
                     displayValue: true,
-                    fontSize: 10,
-                    margin: 8,
-                    textMargin: 3,
-                    width: 1.5
+                    fontSize: 11,
+                    margin: 10,
+                    textMargin: 5,
+                    width: 2.0 // Aumentado para ocupar más largo
                 };
-                if (barcodeLength >= 55) { barcodeConfig.width = 0.7; barcodeConfig.fontSize = 6; barcodeConfig.height = 40; barcodeConfig.displayValue = false; }
-                else if (barcodeLength >= 50) { barcodeConfig.width = 0.8; barcodeConfig.fontSize = 7; barcodeConfig.height = 45; }
-                else if (barcodeLength >= 45) { barcodeConfig.width = 0.9; barcodeConfig.fontSize = 8; barcodeConfig.height = 48; }
-                else if (barcodeLength >= 40) { barcodeConfig.width = 1; barcodeConfig.fontSize = 8; }
-                else if (barcodeLength >= 30) { barcodeConfig.width = 1.15; barcodeConfig.fontSize = 9; }
+                
+                // Ajuste dinámico basado en longitud para maximizar el ancho sin desbordar
+                if (barcodeLength >= 55) { 
+                    barcodeConfig.width = 1.1; 
+                    barcodeConfig.fontSize = 8; 
+                    barcodeConfig.height = 55; 
+                    barcodeConfig.displayValue = false; 
+                }
+                else if (barcodeLength >= 50) { 
+                    barcodeConfig.width = 1.2; 
+                    barcodeConfig.fontSize = 9; 
+                    barcodeConfig.height = 60; 
+                }
+                else if (barcodeLength >= 45) { 
+                    barcodeConfig.width = 1.4; 
+                    barcodeConfig.fontSize = 10; 
+                    barcodeConfig.height = 65; 
+                }
+                else if (barcodeLength >= 40) { 
+                    barcodeConfig.width = 1.6; 
+                    barcodeConfig.fontSize = 10; 
+                }
+                
                 JsBarcode("#generated-barcode", barcodeValue, barcodeConfig);
             } catch (e) {
                 console.error("Error generando barcode:", e);
