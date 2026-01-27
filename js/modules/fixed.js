@@ -261,88 +261,111 @@ const FixedModule = {
         const hasBarcode = invoiceData.barcode && invoiceData.barcode.length > 5;
         
         content.innerHTML = `
-            <div class="extracted-data payment-summary-container">
-                <div class="alert alert-success mb-4" style="display: flex; align-items: center; gap: 10px;">
-                    <i class="bi bi-check-circle-fill"></i>
-                    <span>¡Extracción exitosa! Verificá los datos extraídos por la IA.</span>
-                </div>
-
-                <div class="data-display-grid mb-4">
-                    <div class="data-item">
-                        <span class="label">EMPRESA</span>
-                        <div class="value" id="display-provider">${invoiceData.provider?.name || 'No identificada'}</div>
+            <div class="extraction-container">
+                <div class="extraction-success-header">
+                    <div class="success-icon">
+                        <i class="bi bi-check-all"></i>
                     </div>
-                    <div class="data-item">
-                        <span class="label">TITULAR</span>
-                        <div class="value" id="display-titular">${invoiceData.titular || 'No detectado'}</div>
-                    </div>
-                    <div class="data-item">
-                        <span class="label">MONTO</span>
-                        <div class="value highlight" id="display-amount">${invoiceData.amountFormatted || '$0.00'}</div>
-                    </div>
-                    <div class="data-item">
-                        <span class="label">VENCIMIENTO</span>
-                        <div class="value" id="display-due">${invoiceData.dueDateFormatted || 'No detectado'}</div>
+                    <div class="success-text">
+                        <h3>¡Extracción exitosa!</h3>
+                        <p>Verificá los datos extraídos por la IA antes de continuar.</p>
                     </div>
                 </div>
 
-                <div class="barcode-section mb-4">
+                <div class="data-display-modern">
+                    <div class="data-row">
+                        <div class="data-field">
+                            <span class="label">EMPRESA</span>
+                            <span class="value" id="display-provider">${invoiceData.provider?.name || invoiceData.provider || 'No identificada'}</span>
+                        </div>
+                        <div class="data-field">
+                            <span class="label">TITULAR</span>
+                            <span class="value" id="display-titular">${invoiceData.customerName || invoiceData.titular || 'No detectado'}</span>
+                        </div>
+                    </div>
+                    <div class="data-row highlight-row">
+                        <div class="data-field">
+                            <span class="label">MONTO A PAGAR</span>
+                            <span class="value amount" id="display-amount">${invoiceData.amountFormatted || Utils.formatCurrency(invoiceData.amount)}</span>
+                        </div>
+                        <div class="data-field">
+                            <span class="label">VENCIMIENTO</span>
+                            <span class="value date" id="display-due">${invoiceData.dueDateFormatted || (invoiceData.dueDate ? Utils.formatDate(invoiceData.dueDate) : 'No detectado')}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="barcode-modern-section">
                     ${hasBarcode ? `
-                        <div class="barcode-container">
-                            <div class="barcode-visual">
+                        <div class="barcode-header">
+                            <i class="bi bi-upc-scan"></i>
+                            <span>Código de Barras para Pago</span>
+                        </div>
+                        <div class="barcode-visual-container">
+                            <div class="barcode-svg-wrapper">
                                 <svg id="generated-barcode"></svg>
                             </div>
                         </div>
-                        <div class="barcode-actions mt-2">
-                            <div class="barcode-text-group">
-                                <input type="text" value="${invoiceData.barcode}" readonly class="barcode-input" id="barcode-input-readonly">
-                                <button class="btn-icon" id="copy-barcode-btn" title="Copiar código">
-                                    <i class="bi bi-clipboard"></i>
-                                </button>
-                            </div>
-                            <p class="help-text mt-2">
-                                <i class="bi bi-phone"></i> 
-                                Escaneá el código con tu celular (Mercado Pago) o copiá el número.
-                            </p>
+                        <div class="barcode-copy-wrapper">
+                            <input type="text" class="barcode-input-modern" id="barcode-input-readonly" value="${invoiceData.barcode}" readonly>
+                            <button class="copy-btn-modern" id="copy-barcode-btn" title="Copiar código">
+                                <i class="bi bi-copy"></i>
+                                <span>Copiar</span>
+                            </button>
                         </div>
+                        <p class="barcode-hint">
+                            <i class="bi bi-info-circle"></i>
+                            Escaneá desde <strong>Mercado Pago</strong> o copiá el número para tu billetera virtual.
+                        </p>
                     ` : `
                         <div class="alert alert-warning">
                             <i class="bi bi-exclamation-triangle"></i>
-                            <span>No se detectó código de barras.</span>
+                            <span>No se detectó código de barras para pago electrónico.</span>
                         </div>
                     `}
                 </div>
 
-                <div id="manual-edit-fields" class="manual-edit-fields hidden mb-4">
-                    <div class="form-group mb-2">
-                        <label>Empresa:</label>
-                        <input type="text" id="edit-provider" class="form-control" value="${invoiceData.provider?.name || ''}">
-                    </div>
-                    <div class="form-group mb-2">
-                        <label>Monto:</label>
-                        <input type="number" id="edit-amount" class="form-control" value="${invoiceData.amount || 0}" step="0.01">
-                    </div>
-                    <div class="form-group mb-2">
-                        <label>Vencimiento:</label>
-                        <input type="date" id="edit-due" class="form-control" value="${invoiceData.dueDate || ''}">
-                    </div>
-                    <div class="form-group mb-2">
-                        <label>Código de Barras:</label>
-                        <input type="text" id="edit-barcode" class="form-control" value="${invoiceData.barcode || ''}">
+                <div class="extraction-actions">
+                    <button class="btn-pay-now" id="confirm-payment-btn">
+                        <i class="bi bi-credit-card-fill"></i>
+                        YA PAGUÉ, CARGAR COMPROBANTE
+                    </button>
+                    
+                    <div class="secondary-actions">
+                        <button class="btn-secondary-outline" id="edit-invoice-btn">
+                            <i class="bi bi-pencil-square"></i>
+                            EDITAR DATOS
+                        </button>
+                        <button class="btn-secondary-outline" id="pay-later-btn">
+                            <i class="bi bi-clock-history"></i>
+                            PAGAR LUEGO
+                        </button>
                     </div>
                 </div>
 
-                <div class="action-buttons vertical">
-                    <button type="button" class="btn btn-primary btn-lg w-100 mb-2" id="confirm-payment-btn">
-                        <i class="bi bi-check-lg"></i> YA PAGUÉ, CARGAR COMPROBANTE
-                    </button>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-secondary w-50" id="edit-invoice-btn">
-                            <i class="bi bi-pencil"></i> EDITAR DATOS
-                        </button>
-                        <button type="button" class="btn btn-outline-info w-50" id="pay-later-btn">
-                            <i class="bi bi-clock"></i> PAGAR LUEGO
-                        </button>
+                <div id="manual-edit-fields" class="manual-edit-fields-modern hidden">
+                    <h4>Corregir datos</h4>
+                    <div class="edit-grid">
+                        <div class="form-group">
+                            <label>Empresa</label>
+                            <input type="text" id="edit-provider" value="${invoiceData.provider?.name || invoiceData.provider || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Titular</label>
+                            <input type="text" id="edit-customer" value="${invoiceData.customerName || invoiceData.titular || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Monto</label>
+                            <input type="number" id="edit-amount" value="${invoiceData.amount || 0}" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label>Vencimiento</label>
+                            <input type="date" id="edit-due" value="${invoiceData.dueDate || ''}">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Código de Barras</label>
+                            <input type="text" id="edit-barcode" value="${invoiceData.barcode || ''}">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -401,7 +424,8 @@ const FixedModule = {
                 amount: parseFloat(document.getElementById('edit-amount').value) || invoiceData.amount,
                 barcode: document.getElementById('edit-barcode').value || invoiceData.barcode,
                 dueDate: document.getElementById('edit-due').value || invoiceData.dueDate,
-                providerName: document.getElementById('edit-provider').value || invoiceData.provider?.name
+                providerName: document.getElementById('edit-provider').value || invoiceData.provider?.name || invoiceData.provider,
+                customerName: document.getElementById('edit-customer')?.value || invoiceData.customerName || invoiceData.titular
             };
             
             this.saveInvoiceData(expenseId, finalData, base64, file, CONSTANTS.EXPENSE_STATUS.PROCESSING);
@@ -425,7 +449,8 @@ const FixedModule = {
                 amount: invoiceData.amount,
                 barcode: invoiceData.barcode,
                 dueDate: invoiceData.dueDate,
-                providerName: invoiceData.providerName || invoiceData.provider?.name,
+                providerName: invoiceData.providerName || invoiceData.provider?.name || invoiceData.provider,
+                customerName: invoiceData.customerName || invoiceData.titular,
                 fileName: file.name,
                 uploadedAt: new Date().toISOString()
             }

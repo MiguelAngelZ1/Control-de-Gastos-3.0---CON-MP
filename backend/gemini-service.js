@@ -26,7 +26,7 @@ const GeminiService = {
             
             const response = await ai.models.generateContent({
                 model: 'gemini-2.0-flash-exp',
-                contents: `Eres un experto en facturas de servicios públicos de Argentina.
+                contents: `Eres un experto en facturas de servicios de Argentina.
 
 TAREA: Analiza el texto de una factura y extrae los datos en formato JSON.
 
@@ -39,10 +39,11 @@ REGLAS CRÍTICAS PARA EL CÓDIGO DE BARRAS:
 6. Si hay múltiples códigos largos, prefiere el que tenga 40+ dígitos.
 
 REGLAS PARA OTROS CAMPOS:
-- "amount": Total a pagar FINAL (número decimal, ej: 15420.50)
-- "dueDate": Fecha de vencimiento en formato YYYY-MM-DD
-- "provider": Nombre de la empresa (Edenor, Metrogas, Telecom, AySA, etc)
-- "reference": Número de referencia o código de pago electrónico corto
+- "provider": Nombre de la empresa emisora (ej: Edenor, Metrogas, Telecom, AySA, Personal, Edesur, Naturgy, etc). Debe ser el nombre comercial.
+- "customerName": Nombre del titular del servicio. Suele estar cerca de la dirección o arriba de la factura. NO pongas "No detectado" si hay nombres propios en la cabecera.
+- "amount": Total a pagar FINAL (número decimal, ej: 15420.50).
+- "dueDate": Fecha de vencimiento en formato YYYY-MM-DD.
+- "reference": Número de referencia o código de pago electrónico corto.
 
 Texto de la factura:
 ${text.substring(0, 12000)}`,
@@ -52,13 +53,14 @@ ${text.substring(0, 12000)}`,
                         type: "OBJECT",
                         properties: {
                             provider: { type: "STRING" },
+                            customerName: { type: "STRING" },
                             invoiceNumber: { type: "STRING" },
                             dueDate: { type: "STRING" },
                             amount: { type: "NUMBER" },
                             barcode: { type: "STRING" },
                             reference: { type: "STRING" }
                         },
-                        required: ["provider", "dueDate", "amount", "barcode"]
+                        required: ["provider", "customerName", "dueDate", "amount", "barcode"]
                     }
                 }
             });
@@ -76,7 +78,6 @@ ${text.substring(0, 12000)}`,
                     console.log(`✅ Código de barras válido: ${cleanBarcode.length} dígitos`);
                 } else {
                     console.warn(`⚠️ Código de barras con longitud inesperada: ${cleanBarcode.length} dígitos`);
-                    // Aún así lo guardamos, pero marcamos la advertencia
                     parsed.barcode = cleanBarcode;
                     parsed.barcodeWarning = `Longitud: ${cleanBarcode.length} (esperado: 40-60)`;
                 }

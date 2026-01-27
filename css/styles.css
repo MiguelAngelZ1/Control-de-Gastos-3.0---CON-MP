@@ -3301,3 +3301,411 @@ input[type="date"]:valid::before {
     font-weight: 800;
     color: var(--text-primary);
 }
+
+/* ============================================================
+   ESTILOS MODERNOS PARA EXTRACCIÓN DE FACTURAS (RESPONSIVO)
+   ============================================================ */
+
+.extraction-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    padding: var(--space-2);
+    max-width: 100%;
+}
+
+/* Header de éxito */
+.extraction-success-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    background: var(--accent-success-soft);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.success-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--accent-success);
+    color: white;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    flex-shrink: 0;
+}
+
+.success-text h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--accent-success);
+    margin-bottom: 2px;
+}
+
+.success-text p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Visualización de datos moderna */
+.data-display-modern {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+    border: 1px solid var(--border-color);
+}
+
+.data-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+.highlight-row {
+    margin-top: var(--space-2);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-color);
+}
+
+.data-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.data-field .label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.data-field .value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.data-field .value.amount {
+    font-size: 1.5rem;
+    color: var(--accent-primary);
+    font-weight: 800;
+}
+
+.data-field .value.date {
+    font-size: 1.125rem;
+    color: var(--text-primary);
+}
+
+/* Sección de Código de Barras */
+.barcode-modern-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.barcode-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.barcode-visual-container {
+    background: white;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100px;
+    overflow: hidden;
+}
+
+.barcode-svg-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.barcode-svg-wrapper svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.barcode-copy-wrapper {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.barcode-input-modern {
+    flex: 1;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.copy-btn-modern {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+}
+
+.copy-btn-modern:hover {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: white;
+}
+
+.barcode-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin: 0;
+}
+
+.barcode-hint strong {
+    color: var(--accent-info);
+}
+
+/* Acciones */
+.extraction-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.btn-pay-now {
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    transition: all var(--transition-normal);
+}
+
+.btn-pay-now:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.secondary-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+
+.btn-secondary-outline {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    transition: all var(--transition-fast);
+}
+
+.btn-secondary-outline:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-light);
+}
+
+/* Edición Manual Moderna */
+.manual-edit-fields-modern {
+    background: var(--bg-dark);
+    padding: var(--space-5);
+    border-radius: var(--radius-xl);
+    border: 1px dashed var(--border-light);
+    margin-top: var(--space-2);
+}
+
+.manual-edit-fields-modern h4 {
+    font-size: 0.9rem;
+    margin-bottom: var(--space-4);
+    color: var(--text-primary);
+}
+
+.edit-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+.edit-grid .full-width {
+    grid-column: span 2;
+}
+
+.manual-edit-fields-modern .form-group label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    display: block;
+}
+
+.manual-edit-fields-modern .form-group input {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+}
+
+/* Responsividad para móviles */
+@media (max-width: 600px) {
+    .data-row {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+    }
+    
+    .edit-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .edit-grid .full-width {
+        grid-column: span 1;
+    }
+    
+    .copy-btn-modern span {
+        display: none;
+    }
+    
+    .copy-btn-modern {
+        padding: 0 var(--space-3);
+    }
+    
+    .success-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.5rem;
+    }
+    
+    .success-text h3 {
+        font-size: 1rem;
+    }
+    
+    .data-field .value.amount {
+        font-size: 1.25rem;
+    }
+    
+    /* Ajuste general de modales en móvil */
+    .modal {
+        width: 95% !important;
+        margin: 10px auto !important;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* Ajuste de ancho de modal para escritorio */
+@media (min-width: 768px) {
+    #invoice-modal .modal {
+        max-width: 600px !important;
+        width: 600px !important;
+    }
+}
+
+/* ============================================================
+   MEJORAS DE RESPONSIVIDAD GENERAL
+   ============================================================ */
+
+@media (max-width: 768px) {
+    /* Sidebar responsivo */
+    .sidebar {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    /* Dashboard cards */
+    .dashboard-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Gráfico del dashboard */
+    .chart-container-modern {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .donut-chart {
+        width: 180px;
+        height: 180px;
+    }
+    
+    .chart-details-grid {
+        width: 100%;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-details-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .page-title {
+        font-size: 1rem;
+    }
+    
+    .header-date {
+        display: none; /* Ocultar fecha larga en móviles muy pequeños */
+    }
+    
+    .stat-card {
+        padding: var(--space-4);
+    }
+    
+    .card-value {
+        font-size: 1.5rem;
+    }
+}
+
+/* Asegurar que las tablas y listas no se desborden */
+.items-list {
+    width: 100%;
+    overflow-x: hidden;
+}
+
+.list-item {
+    width: 100%;
+}
