@@ -1,0 +1,262 @@
+/* ============================================================
+   MEJORAS ADICIONALES PARA MÓVIL
+   ============================================================ */
+
+/* Asegurar que los botones sean táctiles en móvil */
+@media (max-width: 768px) {
+    /* Botones más grandes para touch */
+    .btn {
+        min-height: 44px;
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.9375rem;
+    }
+    
+    .btn-icon {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    
+    .action-btn {
+        min-height: 40px;
+        padding: var(--space-2) var(--space-4);
+    }
+    
+    /* Mejorar espaciado de formularios */
+    .form-group {
+        margin-bottom: var(--space-5);
+    }
+    
+    .form-control {
+        min-height: 48px;
+        font-size: 1rem;
+        padding: var(--space-3) var(--space-4);
+    }
+    
+    /* Mejorar espaciado de listas */
+    .list-item {
+        padding: var(--space-4);
+        margin-bottom: var(--space-3);
+    }
+    
+    /* Mejorar cards */
+    .card {
+        padding: var(--space-4);
+        margin-bottom: var(--space-4);
+    }
+    
+    .card-header {
+        padding-bottom: var(--space-4);
+        margin-bottom: var(--space-4);
+    }
+    
+    /* Mejorar stat cards */
+    .stat-card {
+        padding: var(--space-5);
+    }
+    
+    /* Mejorar modales en móvil */
+    .modal {
+        margin: var(--space-4);
+        max-width: calc(100% - 2rem);
+        max-height: calc(100vh - 2rem);
+    }
+    
+    .modal-header {
+        padding: var(--space-4);
+    }
+    
+    .modal-body {
+        padding: var(--space-4);
+    }
+    
+    .modal-footer {
+        padding: var(--space-4);
+        flex-wrap: wrap;
+    }
+    
+    .modal-footer .btn {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    /* Mejorar tablas responsive */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Mejorar week tabs */
+    .week-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+    
+    .week-tab {
+        min-width: 100px;
+        padding: var(--space-3) var(--space-4);
+    }
+    
+    /* Mejorar receipt grid */
+    .receipts-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+    }
+    
+    /* Mejorar form-row en móvil */
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+    
+    /* Asegurar que los inputs de fecha sean accesibles */
+    input[type="date"],
+    input[type="month"] {
+        min-height: 48px;
+    }
+    
+    /* Mejorar toast en móvil */
+    #toast-container {
+        left: var(--space-4);
+        right: var(--space-4);
+        max-width: calc(100% - 2rem);
+    }
+    
+    .toast {
+        width: 100%;
+    }
+    
+    /* Mejorar header actions */
+    .header-actions {
+        gap: var(--space-2);
+    }
+    
+    /* Asegurar que el contenido no se desborde */
+    .content-area {
+        overflow-x: hidden;
+    }
+    
+    /* Mejorar item-actions en listas */
+    .item-actions {
+        width: 100%;
+        justify-content: flex-start;
+        margin-top: var(--space-2);
+    }
+    
+    .fixed-items .item-actions {
+        width: 100%;
+    }
+    
+    /* Mejorar weekly summary */
+    .weekly-summary-card {
+        padding: var(--space-4);
+    }
+    
+    /* Mejorar gráficos */
+    .chart-container {
+        padding: var(--space-3);
+    }
+    
+    /* Mejorar receipt viewer */
+    .receipt-viewer-image img {
+        max-height: 50vh;
+    }
+    
+    /* Asegurar que los elementos clickables tengan suficiente espacio */
+    .nav-item {
+        min-height: 44px;
+        padding: var(--space-3) var(--space-4);
+    }
+    
+    /* Mejorar simulación de pagos */
+    .simulation-actions {
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+    
+    .simulation-actions .btn {
+        width: 100%;
+    }
+}
+
+/* Mejoras para pantallas muy pequeñas */
+@media (max-width: 480px) {
+    /* Reducir padding general */
+    .content-area {
+        padding: var(--space-3);
+    }
+    
+    .card {
+        padding: var(--space-3);
+    }
+    
+    .stat-card {
+        padding: var(--space-4);
+    }
+    
+    /* Reducir tamaño de fuente en títulos */
+    .card-title {
+        font-size: 1rem;
+    }
+    
+    .page-title {
+        font-size: 1.125rem;
+    }
+    
+    /* Mejorar botones en pantallas pequeñas */
+    .btn {
+        font-size: 0.875rem;
+        padding: var(--space-3);
+    }
+    
+    /* Ocultar textos largos en botones pequeños */
+    .action-btn span {
+        display: none;
+    }
+    
+    .action-btn i {
+        margin: 0;
+    }
+    
+    /* Mantener texto en botones principales */
+    .btn-primary span,
+    .btn-success span,
+    .btn-danger span {
+        display: inline;
+    }
+    
+    /* Mejorar dashboard cards */
+    .card-value {
+        font-size: 1.5rem;
+    }
+    
+    .stat-card-label {
+        font-size: 0.8125rem;
+    }
+}
+
+/* Mejoras de accesibilidad táctil */
+@media (hover: none) and (pointer: coarse) {
+    /* Dispositivos táctiles */
+    .btn,
+    .action-btn,
+    .btn-icon,
+    .nav-item {
+        -webkit-tap-highlight-color: rgba(99, 102, 241, 0.2);
+    }
+    
+    /* Eliminar hover en dispositivos táctiles */
+    .btn:hover,
+    .action-btn:hover,
+    .btn-icon:hover {
+        transform: none;
+    }
+    
+    /* Mejorar feedback táctil */
+    .btn:active,
+    .action-btn:active,
+    .btn-icon:active {
+        transform: scale(0.98);
+        opacity: 0.9;
+    }
+}
