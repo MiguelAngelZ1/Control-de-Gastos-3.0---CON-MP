@@ -1,6 +1,6 @@
 /**
  * ====================================
- * INVOICE-PARSER.JS - Motor de Análisis v3.1
+ * INVOICE-PARSER.JS - Motor de Análisis v3.2 (ULTRA-ROBUSTO)
  * ====================================
  * 
  * Optimizado para facturas de servicios de Argentina.
@@ -9,7 +9,7 @@
 
 const { validateBarcode } = require('./barcode');
 
-// Configuración de proveedores conocidos
+// Configuración de proveedores conocidos con patrones expandidos
 const PROVIDERS = {
     edenor: { name: 'Edenor', patterns: ['edenor', 'empresa distribuidora norte'], type: 'electricity' },
     edesur: { name: 'Edesur', patterns: ['edesur', 'empresa distribuidora sur'], type: 'electricity' },
@@ -21,14 +21,15 @@ const PROVIDERS = {
     claro: { name: 'Claro', patterns: ['claro', 'amx argentina'], type: 'telecom' },
     fibertel: { name: 'Fibertel', patterns: ['fibertel', 'cablevision'], type: 'internet' },
     telecentro: { name: 'Telecentro', patterns: ['telecentro'], type: 'internet' },
-    directv: { name: 'DirecTV', patterns: ['directv'], type: 'cable' }
+    directv: { name: 'DirecTV', patterns: ['directv'], type: 'cable' },
+    // Agregamos detección por CUITs comunes si es necesario
 };
 
 class InvoiceParser {
     constructor(ocrText) {
         this.originalText = ocrText;
         this.text = this.normalizeText(ocrText);
-        this.lines = ocrText.split('\n').filter(l => l.trim());
+        this.lines = ocrText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         this.results = {
             provider: null,
             customerName: null,
@@ -54,7 +55,7 @@ class InvoiceParser {
     }
 
     parse() {
-        this.log('Iniciando análisis local optimizado v3.1...');
+        this.log('Iniciando análisis local ultra-robusto v3.2...');
         
         this.detectProvider();
         this.extractCustomerName();
@@ -69,12 +70,26 @@ class InvoiceParser {
      * DETECCIÓN DE EMPRESA
      */
     detectProvider() {
+        const textLower = this.originalText.toLowerCase();
         for (const [id, config] of Object.entries(PROVIDERS)) {
             for (const pattern of config.patterns) {
-                if (this.text.includes(pattern)) {
+                if (textLower.includes(pattern)) {
                     this.results.provider = { id, name: config.name, type: config.type };
                     this.results.confidence.provider = 100;
                     this.log(`✓ Empresa detectada: ${config.name}`);
+                    return;
+                }
+            }
+        }
+        
+        // Búsqueda difusa en las primeras líneas (logos suelen estar arriba)
+        for (let i = 0; i < Math.min(this.lines.length, 5); i++) {
+            const line = this.lines[i].toLowerCase();
+            for (const [id, config] of Object.entries(PROVIDERS)) {
+                if (line.includes(id)) {
+                    this.results.provider = { id, name: config.name, type: config.type };
+                    this.results.confidence.provider = 80;
+                    this.log(`✓ Empresa detectada (búsqueda difusa): ${config.name}`);
                     return;
                 }
             }
@@ -83,124 +98,141 @@ class InvoiceParser {
     }
 
     /**
-     * EXTRACCIÓN DE TITULAR (CLIENTE) - CORREGIDO
+     * EXTRACCIÓN DE TITULAR (CLIENTE)
      */
     extractCustomerName() {
         this.log('Buscando nombre del titular del servicio...');
         
-        // Lista de palabras que indican que NO es un nombre de persona (Empresas o términos de factura)
         const blacklist = [
             'EDENOR', 'EDESUR', 'METROGAS', 'NATURGY', 'AYSA', 'TELECOM', 'PERSONAL', 'FLOW', 
             'MOVISTAR', 'TELEFONICA', 'CLARO', 'FIBERTEL', 'TELECENTRO', 'DIRECTV',
             'S.A.', 'SA', 'INC', 'SRL', 'CUIT', 'CUIL', 'FACTURA', 'LIQUIDACION', 'CONSUMO',
             'TOTAL', 'PAGO', 'VENCE', 'VENCIMIENTO', 'CLIENTE', 'TITULAR', 'USUARIO',
-            'SUMINISTRO', 'DIRECCION', 'DOMICILIO', 'ESTADO', 'PERIODO', 'MES', 'AÑO'
+            'SUMINISTRO', 'DIRECCION', 'DOMICILIO', 'ESTADO', 'PERIODO', 'MES', 'AÑO',
+            'FECHA', 'EMISION', 'NUMERO', 'NRO', 'CALLE', 'PROVINCIA', 'LOCALIDAD'
         ];
 
-        // Patrones específicos para capturar el nombre después de etiquetas clave
+        // 1. Buscar por etiquetas explícitas
         const namePatterns = [
-            /(?:titular|cliente|usuario|señor\(a\)|sr\/a|nombre)[:\s]+([A-ZÁÉÍÓÚÑ\s]{5,40})/i,
-            /domicilio de suministro[:\s]+.*?[\n\r]([A-ZÁÉÍÓÚÑ\s]{5,40})/i,
-            /datos del cliente[:\s]+.*?[\n\r]([A-ZÁÉÍÓÚÑ\s]{5,40})/i
+            /(?:titular|cliente|usuario|señor\(a\)|sr\/a|nombre|pagador)[:\s]+([A-ZÁÉÍÓÚÑ\s]{5,45})/i,
+            /(?:datos del cliente|datos del titular)[:\s]*[\n\r]+([A-ZÁÉÍÓÚÑ\s]{5,45})/i
         ];
 
         for (const pattern of namePatterns) {
             const match = this.originalText.match(pattern);
             if (match && match[1]) {
-                let name = match[1].trim().split('\n')[0].trim(); // Solo la primera línea del match
-                
-                // Limpiar si el match capturó demasiado (ej: "JUAN PEREZ CUIT 20...")
-                name = name.split(/(?:CUIT|CUIL|DNI|NRO|N°)/i)[0].trim();
+                let name = match[1].trim().split('\n')[0].trim();
+                name = name.split(/(?:CUIT|CUIL|DNI|NRO|N°|ID|COD)/i)[0].trim();
 
                 if (this.isValidPersonName(name, blacklist)) {
                     this.results.customerName = name.toUpperCase();
-                    this.results.confidence.customerName = 90;
-                    this.log(`✓ Titular (Cliente) detectado: ${this.results.customerName}`);
+                    this.results.confidence.customerName = 95;
+                    this.log(`✓ Titular detectado por etiqueta: ${this.results.customerName}`);
                     return;
                 }
             }
         }
 
-        // Fallback: Buscar en las primeras líneas una estructura de nombre real
-        // Un nombre de persona suele tener 2 a 4 palabras en mayúsculas
-        for (let i = 0; i < Math.min(this.lines.length, 20); i++) {
-            const line = this.lines[i].trim();
-            
-            // Patrón: 2 a 4 palabras de 3+ letras cada una, solo letras y espacios
-            if (/^[A-ZÁÉÍÓÚÑ]{3,}\s[A-ZÁÉÍÓÚÑ]{2,}(\s[A-ZÁÉÍÓÚÑ]{2,})?(\s[A-ZÁÉÍÓÚÑ]{2,})?$/.test(line)) {
-                if (this.isValidPersonName(line, blacklist)) {
-                    this.results.customerName = line;
-                    this.results.confidence.customerName = 70;
-                    this.log(`✓ Titular probable por formato: ${line}`);
-                    return;
+        // 2. Buscar cerca de "Domicilio de Suministro" o "Lugar de Pago"
+        const contextKeywords = ['suministro', 'domicilio', 'dirección', 'direccion'];
+        for (let i = 0; i < Math.min(this.lines.length, 25); i++) {
+            const line = this.lines[i].toLowerCase();
+            if (contextKeywords.some(k => line.includes(k))) {
+                // Mirar 2 líneas arriba y 2 abajo
+                for (let j = Math.max(0, i - 2); j <= Math.min(this.lines.length - 1, i + 2); j++) {
+                    const candidate = this.lines[j].trim();
+                    if (this.isValidPersonName(candidate, blacklist)) {
+                        this.results.customerName = candidate.toUpperCase();
+                        this.results.confidence.customerName = 80;
+                        this.log(`✓ Titular detectado por contexto geográfico: ${candidate}`);
+                        return;
+                    }
                 }
+            }
+        }
+
+        // 3. Fallback: Primera línea que parezca nombre
+        for (let i = 0; i < Math.min(this.lines.length, 15); i++) {
+            const line = this.lines[i].trim();
+            if (this.isValidPersonName(line, blacklist)) {
+                this.results.customerName = line.toUpperCase();
+                this.results.confidence.customerName = 60;
+                this.log(`✓ Titular probable (primera coincidencia): ${line}`);
+                return;
             }
         }
     }
 
-    /**
-     * Valida si un string parece un nombre de persona real y no una empresa o término técnico
-     */
     isValidPersonName(name, blacklist) {
-        if (name.length < 5 || name.length > 40) return false;
-        
-        const upperName = name.toUpperCase();
-        
-        // No debe contener números
+        if (name.length < 6 || name.length > 45) return false;
         if (/\d/.test(name)) return false;
         
-        // No debe estar en la blacklist
+        const upperName = name.toUpperCase();
         for (const word of blacklist) {
-            if (upperName.includes(word)) return false;
+            if (upperName === word || upperName.startsWith(word + ' ') || upperName.endsWith(' ' + word)) return false;
         }
         
-        // Debe tener al menos un espacio (Nombre y Apellido)
-        if (!name.includes(' ')) return false;
-
-        return true;
+        // Debe tener al menos un espacio y no demasiados caracteres especiales
+        const words = name.split(/\s+/);
+        if (words.length < 2 || words.length > 5) return false;
+        
+        // Cada palabra debe tener al menos 2 letras
+        return words.every(w => w.length >= 2);
     }
 
     /**
      * EXTRACCIÓN DE MONTO
      */
     extractAmount() {
+        this.log('Buscando monto total...');
         const candidates = [];
-        let match;
-
-        // Quitar puntos de miles para facilitar regex
-        const textForAmount = this.originalText.replace(/(\d)\.(\d{3})/g, '$1$2'); 
-        const contextRegex = /(?:total|pagar|importe|monto|deuda|saldo|vencimiento)[:\s]*\$?\s*(\d+,\d{2})/gi;
         
-        while ((match = contextRegex.exec(textForAmount)) !== null) {
+        // Limpiar texto de puntos de miles para evitar confusiones (ej: 1.234,56 -> 1234,56)
+        const cleanText = this.originalText.replace(/(\d)\.(\d{3})/g, '$1$2');
+        
+        // Patrones con contexto de alta prioridad
+        const highPriorityRegex = /(?:total a pagar|total factura|importe total|monto total|total vencimiento|total liquidación|total liquidacion|pagar)[:\s]*\$?\s*(\d+[\.,]\d{2})/gi;
+        let match;
+        while ((match = highPriorityRegex.exec(cleanText)) !== null) {
             const val = parseFloat(match[1].replace(',', '.'));
-            if (val > 10) {
-                candidates.push({ val, weight: 100 });
-            }
+            if (val > 10) candidates.push({ val, weight: 100 });
+        }
+
+        // Patrones de prioridad media
+        const midPriorityRegex = /(?:total|importe|monto|saldo)[:\s]*\$?\s*(\d+[\.,]\d{2})/gi;
+        while ((match = midPriorityRegex.exec(cleanText)) !== null) {
+            const val = parseFloat(match[1].replace(',', '.'));
+            if (val > 10) candidates.push({ val, weight: 70 });
         }
 
         if (candidates.length > 0) {
-            candidates.sort((a, b) => b.val - a.val);
+            // Ordenar por peso y luego por valor (el más alto suele ser el total)
+            candidates.sort((a, b) => b.weight - a.weight || b.val - a.val);
             this.results.amount = candidates[0].val;
-            this.results.confidence.amount = 95;
+            this.results.confidence.amount = candidates[0].weight;
             this.log(`✓ Monto detectado: $${this.results.amount}`);
         } else {
-            const genericMatches = this.originalText.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g) || [];
-            const genericVals = genericMatches.map(m => parseFloat(m.replace(/\./g, '').replace(',', '.'))).filter(v => v > 100);
-            if (genericVals.length > 0) {
-                this.results.amount = Math.max(...genericVals);
-                this.results.confidence.amount = 50;
-                this.log(`✓ Monto detectado (genérico): $${this.results.amount}`);
+            // Búsqueda desesperada: el número más grande con decimales
+            const allNumbers = cleanText.match(/\d+[\.,]\d{2}/g) || [];
+            const vals = allNumbers.map(n => parseFloat(n.replace(',', '.'))).filter(v => v > 100 && v < 1000000);
+            if (vals.length > 0) {
+                this.results.amount = Math.max(...vals);
+                this.results.confidence.amount = 40;
+                this.log(`✓ Monto detectado (máximo encontrado): $${this.results.amount}`);
             }
         }
     }
 
     /**
-     * EXTRACCIÓN DE VENCIMIENTO
+     * EXTRACCIÓN DE VENCIMIENTO (CON VALIDACIÓN REALISTA)
      */
     extractDueDate() {
+        this.log('Buscando fecha de vencimiento...');
         const dateRegex = /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/g;
         const candidates = [];
         let match;
+
+        const currentYear = new Date().getFullYear();
 
         while ((match = dateRegex.exec(this.originalText)) !== null) {
             const day = parseInt(match[1]);
@@ -208,13 +240,15 @@ class InvoiceParser {
             let year = parseInt(match[3]);
             if (year < 100) year += 2000;
 
-            if (day <= 31 && month <= 12 && year >= 2024) {
+            // VALIDACIÓN CRÍTICA: Solo fechas realistas (entre el año pasado y 2 años a futuro)
+            if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= currentYear - 1 && year <= currentYear + 2) {
                 const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                const context = this.originalText.substring(Math.max(0, match.index - 40), match.index).toLowerCase();
+                const context = this.originalText.substring(Math.max(0, match.index - 50), match.index).toLowerCase();
                 
                 let weight = 50;
-                if (context.includes('vencimiento') || context.includes('vto') || context.includes('vence')) weight = 100;
-                if (context.includes('emisión') || context.includes('emision')) weight = 20;
+                if (context.includes('vencimiento') || context.includes('vto') || context.includes('vence') || context.includes('vto.')) weight = 100;
+                if (context.includes('emisión') || context.includes('emision') || context.includes('fecha de factura')) weight = 20;
+                if (context.includes('próximo') || context.includes('proximo')) weight = 80;
 
                 candidates.push({ dateStr, weight });
             }
@@ -225,6 +259,8 @@ class InvoiceParser {
             this.results.dueDate = candidates[0].dateStr;
             this.results.confidence.date = candidates[0].weight;
             this.log(`✓ Vencimiento detectado: ${this.results.dueDate}`);
+        } else {
+            this.log('⚠ No se encontró una fecha de vencimiento válida y realista');
         }
     }
 
@@ -232,7 +268,7 @@ class InvoiceParser {
      * EXTRACCIÓN DE CÓDIGO DE BARRAS
      */
     extractBarcode() {
-        const sequences = this.originalText.match(/\d{20,60}/g) || [];
+        const sequences = this.originalText.match(/\d{15,60}/g) || [];
         const validCodes = sequences
             .map(s => validateBarcode(s))
             .filter(v => v.valid)
