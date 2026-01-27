@@ -95,7 +95,7 @@ const FixedModule = {
     },
 
     /**
-     * Abre el modal para cargar factura
+     * Abre el modal para cargar factura (Ventana 1)
      * @param {string} id - ID del gasto
      */
     openInvoiceModal(id) {
@@ -116,9 +116,6 @@ const FixedModule = {
                     <p>Arrastrá el archivo aquí o hacé clic para seleccionar</p>
                     <span>PDF, JPG, PNG o WebP (máx. 5MB)</span>
                 </div>
-
-                <div id="invoice-preview" class="invoice-preview hidden"></div>
-                <div id="invoice-data" class="invoice-data hidden"></div>
             </div>
         `;
 
@@ -190,12 +187,7 @@ const FixedModule = {
     },
 
     /**
-     * Maneja la subida de archivo
-     * @param {File} file - Archivo subido
-     * @param {string} expenseId - ID del gasto
-     */
-    /**
-     * Maneja la subida de archivo
+     * Maneja la subida de archivo y muestra el spinner (Ventana 2)
      * @param {File} file - Archivo subido
      * @param {string} expenseId - ID del gasto
      */
@@ -207,15 +199,17 @@ const FixedModule = {
             return;
         }
 
-        const dropZone = document.getElementById('invoice-drop-zone');
-        const preview = document.getElementById('invoice-preview');
-        const dataSection = document.getElementById('invoice-data');
+        const modal = document.getElementById('invoice-modal');
+        const content = modal.querySelector('.modal-body');
 
-        // Mostrar loading
-        dropZone.innerHTML = `
-            <div class="loading-spinner"></div>
-            <p>${CONSTANTS.MESSAGES.INVOICE_ANALYZING || 'Analizando factura...'}</p>
-            <small>Esto puede tomar unos segundos (usando IA)</small>
+        // Mostrar Ventana 2: Spinner de carga
+        content.innerHTML = `
+            <div class="invoice-analyzing-section text-center py-5">
+                <div class="loading-spinner mb-4"></div>
+                <h4>Analizando factura...</h4>
+                <p class="text-muted">Nuestra IA Gemini está extrayendo los datos de pago.</p>
+                <small class="text-info"><i class="bi bi-info-circle"></i> Esto puede tomar unos segundos</small>
+            </div>
         `;
 
         try {
@@ -237,298 +231,225 @@ const FixedModule = {
             const result = await response.json();
             const invoiceData = result.extracted;
 
-            // Convertir archivo a base64 para preview local (opcional, si se quiere guardar en storage)
+            // Convertir archivo a base64 para preview local
             const base64 = await Utils.fileToBase64(file);
 
-            // Mostrar preview
-            preview.classList.remove('hidden');
-            if (file.type.startsWith('image/')) {
-                preview.innerHTML = `<img src="${base64}" alt="Preview de factura">`;
-            } else {
-                preview.innerHTML = `
-                    <div class="pdf-preview">
-                        <i class="bi bi-file-earmark-pdf"></i>
-                        <span>${file.name}</span>
-                    </div>
-                `;
-            }
-
-            // Mostrar datos extraídos con UI MEJORADA (Payment Summary)
-            dataSection.classList.remove('hidden');
-            
-            // Determinar si hay código de barras
-            const hasBarcode = invoiceData.barcode && invoiceData.barcode.length > 5;
-            
-            dataSection.innerHTML = `
-                <div class="extracted-data payment-summary-container">
-                    <h5><i class="bi bi-magic"></i> Análisis Inteligente${result.source === 'gemini' ? ' (IA)' : ''}</h5>
-                    
-                    <div class="amount-card">
-                        <span class="label">Monto a Pagar</span>
-                        <div class="amount-value">${invoiceData.amountFormatted || '$0.00'}</div>
-                        ${invoiceData.dueDateFormatted ? `<span class="due-date">Vence: ${invoiceData.dueDateFormatted}</span>` : ''}
-                    </div>
-
-                    <div class="barcode-section">
-                        ${hasBarcode ? `
-                            <div class="barcode-container">
-                                <div class="barcode-visual">
-                                    <svg id="generated-barcode"></svg>
-                                </div>
-                                <div class="barcode-length-indicator ${
-                                    invoiceData.barcode.length >= 40 && invoiceData.barcode.length <= 60 
-                                        ? 'valid' 
-                                        : 'warning'
-                                }">
-                                    <i class="bi ${
-                                        invoiceData.barcode.length >= 40 && invoiceData.barcode.length <= 60 
-                                            ? 'bi-check-circle-fill' 
-                                            : 'bi-exclamation-triangle-fill'
-                                    }"></i>
-                                    <span>${invoiceData.barcode.length} dígitos ${
-                                        invoiceData.barcode.length >= 40 && invoiceData.barcode.length <= 60 
-                                            ? '(óptimo)' 
-                                            : ''
-                                    }</span>
-                                </div>
-                            </div>
-                            <div class="barcode-actions">
-                                <div class="barcode-text-group">
-                                    <input type="text" value="${invoiceData.barcode}" readonly class="barcode-input" id="barcode-input-readonly">
-                                    <button class="btn-icon" id="copy-barcode-btn" title="Copiar código">
-                                        <i class="bi bi-clipboard"></i>
-                                    </button>
-                                </div>
-                                <p class="help-text">
-                                    <i class="bi bi-phone"></i> 
-                                    Escaneá con tu app bancaria o copiá el código
-                                </p>
-                            </div>
-                        ` : `
-                            <div class="alert alert-warning" style="display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); background: var(--accent-warning-soft); border-radius: var(--radius-lg); color: var(--accent-warning);">
-                                <i class="bi bi-exclamation-triangle"></i>
-                                <span>No se detectó código de barras en la factura.</span>
-                            </div>
-                        `}
-                    </div>
-
-                    <div class="action-buttons vertical">
-                        <button type="button" class="btn btn-primary btn-lg" id="confirm-invoice-btn">
-                            <i class="bi bi-check-lg"></i> CONTINUAR CON EL PAGO
-                        </button>
-                        <button type="button" class="btn btn-text" id="edit-invoice-btn">
-                            <i class="bi bi-pencil"></i> Editar datos incorrectos
-                        </button>
-                    </div>
-
-                    <!-- Campos ocultos/editables (se muestran al editar) -->
-                    <div id="manual-edit-fields" class="manual-edit-fields hidden">
-                        <div class="data-field">
-                            <label>Monto:</label>
-                            <input type="number" id="edit-amount" value="${invoiceData.amount || 0}" step="0.01">
-                        </div>
-                        <div class="data-field">
-                            <label>Código:</label>
-                            <input type="text" id="edit-barcode" value="${invoiceData.barcode || ''}">
-                        </div>
-                        <div class="data-field">
-                            <label>Vencimiento:</label>
-                            <input type="date" id="edit-due" value="${invoiceData.dueDate || ''}">
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // Generar código de barras visual si existe
-            if (hasBarcode && typeof JsBarcode !== 'undefined') {
-                try {
-                    const barcodeValue = invoiceData.barcode.replace(/\s/g, '');
-                    const barcodeLength = barcodeValue.length;
-        
-                    // Configuración adaptativa según longitud del código
-                    let barcodeConfig = {
-                        format: "CODE128",
-                        lineColor: "#000000",
-                        background: "#ffffff",
-                        height: 50,
-                        displayValue: true,
-                        fontSize: 10,
-                        margin: 8,
-                        textMargin: 3,
-                        width: 1.5
-                    };
-        
-                    // Ajustar ancho según longitud (optimizado para 40-60 dígitos)
-                    if (barcodeLength >= 55) {
-                        barcodeConfig.width = 0.7;
-                        barcodeConfig.fontSize = 6;
-                        barcodeConfig.height = 40;
-                        barcodeConfig.displayValue = false;
-                    } else if (barcodeLength >= 50) {
-                        barcodeConfig.width = 0.8;
-                        barcodeConfig.fontSize = 7;
-                        barcodeConfig.height = 45;
-                    } else if (barcodeLength >= 45) {
-                        barcodeConfig.width = 0.9;
-                        barcodeConfig.fontSize = 8;
-                        barcodeConfig.height = 48;
-                    } else if (barcodeLength >= 40) {
-                        barcodeConfig.width = 1;
-                        barcodeConfig.fontSize = 8;
-                    } else if (barcodeLength >= 30) {
-                        barcodeConfig.width = 1.15;
-                        barcodeConfig.fontSize = 9;
-                    }
-        
-                    JsBarcode("#generated-barcode", barcodeValue, barcodeConfig);
-        
-                    console.log(`✅ Código de barras: ${barcodeLength} dígitos, width: ${barcodeConfig.width}`);
-        
-                } catch (e) {
-                    console.error("Error generando barcode:", e);
-                    const barcodeContainer = document.querySelector('.barcode-visual');
-                    if (barcodeContainer) {
-                        barcodeContainer.innerHTML = `
-                            <div class="barcode-fallback">
-                                <i class="bi bi-upc-scan"></i>
-                                <code>${invoiceData.barcode}</code>
-                            </div>
-                        `;
-                    }
-                }
-            }
-
-            // Evento copiar
-            const copyBtn = document.getElementById('copy-barcode-btn');
-            if (copyBtn) {
-                copyBtn.addEventListener('click', () => {
-                    const input = document.getElementById('barcode-input-readonly');
-                    input.select();
-                    document.execCommand('copy'); // Fallback
-                    if (navigator.clipboard) navigator.clipboard.writeText(input.value);
-                    UI.showToast('Código copiado al portapapeles', 'success');
-                });
-            }
-
-            // Evento confirmar
-            document.getElementById('confirm-invoice-btn').addEventListener('click', () => {
-                // Si se editó, usar valores editados
-                const finalAmount = parseFloat(document.getElementById('edit-amount').value) || invoiceData.amount;
-                const finalBarcode = document.getElementById('edit-barcode').value || invoiceData.barcode;
-                const finalDue = document.getElementById('edit-due').value || invoiceData.dueDate;
-
-                this.confirmInvoice(expenseId, {
-                    file: base64,
-                    fileName: file.name,
-                    fileType: file.type,
-                    amount: finalAmount,
-                    barcode: finalBarcode,
-                    dueDate: finalDue,
-                    reference: finalBarcode, // Usar barcode como referencia
-                    confidence: invoiceData.amountConfidence
-                });
-            });
-
-            // Evento mostrar edición
-            document.getElementById('edit-invoice-btn').addEventListener('click', () => {
-                document.getElementById('manual-edit-fields').classList.remove('hidden');
-                document.getElementById('edit-invoice-btn').classList.add('hidden');
-            });
-
-            // Restaurar dropzone
-            dropZone.innerHTML = `
-                <i class="bi bi-check-circle text-success"></i>
-                <p>Factura procesada</p>
-                <span>Hacé clic para cambiar</span>
-            `;
+            // Mostrar Ventana 3: Resultados de la extracción
+            this.showExtractionResults(expenseId, invoiceData, base64, file);
 
         } catch (error) {
             console.error('Error uploading file:', error);
             UI.showToast(error.message || CONSTANTS.MESSAGES.ERROR_GENERIC, 'error');
             
-            dropZone.innerHTML = `
-                <i class="bi bi-cloud-upload"></i>
-                <p>Arrastrá el archivo aquí o hacé clic para seleccionar</p>
-                <span>PDF, JPG, PNG o WebP (máx. 5MB)</span>
-            `;
+            // Volver a la ventana de carga en caso de error
+            this.openInvoiceModal(expenseId);
         }
     },
 
     /**
-     * Habilita la edición manual de datos extraídos
+     * Muestra los resultados de la extracción (Ventana 3)
+     * @param {string} expenseId - ID del gasto
+     * @param {object} invoiceData - Datos extraídos
+     * @param {string} base64 - Archivo en base64
+     * @param {File} file - Archivo original
      */
-    enableManualEdit() {
-        const inputs = document.querySelectorAll('.extracted-data input');
-        inputs.forEach(input => {
-            input.removeAttribute('readonly');
-            input.classList.add('editable');
+    showExtractionResults(expenseId, invoiceData, base64, file) {
+        const modal = document.getElementById('invoice-modal');
+        const content = modal.querySelector('.modal-body');
+        
+        // Determinar si hay código de barras
+        const hasBarcode = invoiceData.barcode && invoiceData.barcode.length > 5;
+        
+        content.innerHTML = `
+            <div class="extracted-data payment-summary-container">
+                <div class="alert alert-success mb-4" style="display: flex; align-items: center; gap: 10px;">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>¡Extracción exitosa! Verificá los datos extraídos por la IA.</span>
+                </div>
+
+                <div class="data-display-grid mb-4">
+                    <div class="data-item">
+                        <span class="label">EMPRESA</span>
+                        <div class="value" id="display-provider">${invoiceData.provider?.name || 'No identificada'}</div>
+                    </div>
+                    <div class="data-item">
+                        <span class="label">TITULAR</span>
+                        <div class="value" id="display-titular">${invoiceData.titular || 'No detectado'}</div>
+                    </div>
+                    <div class="data-item">
+                        <span class="label">MONTO</span>
+                        <div class="value highlight" id="display-amount">${invoiceData.amountFormatted || '$0.00'}</div>
+                    </div>
+                    <div class="data-item">
+                        <span class="label">VENCIMIENTO</span>
+                        <div class="value" id="display-due">${invoiceData.dueDateFormatted || 'No detectado'}</div>
+                    </div>
+                </div>
+
+                <div class="barcode-section mb-4">
+                    ${hasBarcode ? `
+                        <div class="barcode-container">
+                            <div class="barcode-visual">
+                                <svg id="generated-barcode"></svg>
+                            </div>
+                        </div>
+                        <div class="barcode-actions mt-2">
+                            <div class="barcode-text-group">
+                                <input type="text" value="${invoiceData.barcode}" readonly class="barcode-input" id="barcode-input-readonly">
+                                <button class="btn-icon" id="copy-barcode-btn" title="Copiar código">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            <p class="help-text mt-2">
+                                <i class="bi bi-phone"></i> 
+                                Escaneá el código con tu celular (Mercado Pago) o copiá el número.
+                            </p>
+                        </div>
+                    ` : `
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span>No se detectó código de barras.</span>
+                        </div>
+                    `}
+                </div>
+
+                <div id="manual-edit-fields" class="manual-edit-fields hidden mb-4">
+                    <div class="form-group mb-2">
+                        <label>Empresa:</label>
+                        <input type="text" id="edit-provider" class="form-control" value="${invoiceData.provider?.name || ''}">
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Monto:</label>
+                        <input type="number" id="edit-amount" class="form-control" value="${invoiceData.amount || 0}" step="0.01">
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Vencimiento:</label>
+                        <input type="date" id="edit-due" class="form-control" value="${invoiceData.dueDate || ''}">
+                    </div>
+                    <div class="form-group mb-2">
+                        <label>Código de Barras:</label>
+                        <input type="text" id="edit-barcode" class="form-control" value="${invoiceData.barcode || ''}">
+                    </div>
+                </div>
+
+                <div class="action-buttons vertical">
+                    <button type="button" class="btn btn-primary btn-lg w-100 mb-2" id="confirm-payment-btn">
+                        <i class="bi bi-check-lg"></i> YA PAGUÉ, CARGAR COMPROBANTE
+                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary w-50" id="edit-invoice-btn">
+                            <i class="bi bi-pencil"></i> EDITAR DATOS
+                        </button>
+                        <button type="button" class="btn btn-outline-info w-50" id="pay-later-btn">
+                            <i class="bi bi-clock"></i> PAGAR LUEGO
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Generar código de barras visual (MANTENIENDO LÓGICA ORIGINAL)
+        if (hasBarcode && typeof JsBarcode !== 'undefined') {
+            try {
+                const barcodeValue = invoiceData.barcode.replace(/\s/g, '');
+                const barcodeLength = barcodeValue.length;
+                let barcodeConfig = {
+                    format: "CODE128",
+                    lineColor: "#000000",
+                    background: "#ffffff",
+                    height: 50,
+                    displayValue: true,
+                    fontSize: 10,
+                    margin: 8,
+                    textMargin: 3,
+                    width: 1.5
+                };
+                if (barcodeLength >= 55) { barcodeConfig.width = 0.7; barcodeConfig.fontSize = 6; barcodeConfig.height = 40; barcodeConfig.displayValue = false; }
+                else if (barcodeLength >= 50) { barcodeConfig.width = 0.8; barcodeConfig.fontSize = 7; barcodeConfig.height = 45; }
+                else if (barcodeLength >= 45) { barcodeConfig.width = 0.9; barcodeConfig.fontSize = 8; barcodeConfig.height = 48; }
+                else if (barcodeLength >= 40) { barcodeConfig.width = 1; barcodeConfig.fontSize = 8; }
+                else if (barcodeLength >= 30) { barcodeConfig.width = 1.15; barcodeConfig.fontSize = 9; }
+                JsBarcode("#generated-barcode", barcodeValue, barcodeConfig);
+            } catch (e) {
+                console.error("Error generando barcode:", e);
+            }
+        }
+
+        // Eventos
+        document.getElementById('copy-barcode-btn')?.addEventListener('click', () => {
+            const input = document.getElementById('barcode-input-readonly');
+            input.select();
+            if (navigator.clipboard) navigator.clipboard.writeText(input.value);
+            UI.showToast('Código copiado', 'success');
         });
-        UI.showToast('Podés editar los campos manualmente', 'info');
+
+        document.getElementById('edit-invoice-btn').addEventListener('click', () => {
+            document.getElementById('manual-edit-fields').classList.toggle('hidden');
+        });
+
+        document.getElementById('pay-later-btn').addEventListener('click', () => {
+            // Guardar datos pero mantener pendiente
+            this.saveInvoiceData(expenseId, invoiceData, base64, file, CONSTANTS.EXPENSE_STATUS.INVOICE_LOADED);
+            UI.closeModal('invoice-modal');
+            UI.showToast('Datos guardados. Podés pagar luego desde la lista.', 'info');
+        });
+
+        document.getElementById('confirm-payment-btn').addEventListener('click', () => {
+            // Guardar datos y pasar a carga de comprobante
+            const finalData = {
+                ...invoiceData,
+                amount: parseFloat(document.getElementById('edit-amount').value) || invoiceData.amount,
+                barcode: document.getElementById('edit-barcode').value || invoiceData.barcode,
+                dueDate: document.getElementById('edit-due').value || invoiceData.dueDate,
+                providerName: document.getElementById('edit-provider').value || invoiceData.provider?.name
+            };
+            
+            this.saveInvoiceData(expenseId, finalData, base64, file, CONSTANTS.EXPENSE_STATUS.PROCESSING);
+            UI.closeModal('invoice-modal');
+            
+            // Abrir modal de comprobante inmediatamente
+            setTimeout(() => {
+                this.markAsPaid(expenseId);
+            }, 300);
+        });
     },
 
     /**
-     * Confirma los datos de la factura
-     * @param {string} expenseId - ID del gasto
-     * @param {object} invoiceData - Datos de la factura
+     * Guarda los datos de la factura en el storage
      */
-    confirmInvoice(expenseId, invoiceData) {
-        const updated = Storage.updateFixedExpense(expenseId, {
-            status: CONSTANTS.EXPENSE_STATUS.INVOICE_LOADED,
-            invoice: invoiceData.file,
+    saveInvoiceData(expenseId, invoiceData, base64, file, status) {
+        Storage.updateFixedExpense(expenseId, {
+            status: status,
+            invoice: base64,
             invoiceData: {
                 amount: invoiceData.amount,
                 barcode: invoiceData.barcode,
-                reference: invoiceData.reference,
                 dueDate: invoiceData.dueDate,
-                fileName: invoiceData.fileName,
+                providerName: invoiceData.providerName || invoiceData.provider?.name,
+                fileName: file.name,
                 uploadedAt: new Date().toISOString()
             }
         });
-
-        if (updated) {
-            UI.showToast(CONSTANTS.MESSAGES.INVOICE_READY, 'success');
-            UI.closeModal('invoice-modal');
-            this.render();
-        } else {
-            UI.showToast(CONSTANTS.MESSAGES.ERROR_GENERIC, 'error');
-        }
-    },
-
-    /**
-     * Inicia el proceso de pago
-     * @param {string} id - ID del gasto
-     */
-    async initiatePayment(id) {
-        const expense = Storage.getFixedExpenses().find(e => e.id === id);
-        if (!expense || !expense.invoiceData) {
-            UI.showToast('Primero debés cargar una factura', 'error');
-            return;
-        }
-
-        // Actualizar estado a "en proceso"
-        Storage.updateFixedExpense(id, {
-            status: CONSTANTS.EXPENSE_STATUS.PROCESSING
-        });
         this.render();
-
-        // Llamar al módulo de pagos
-        PaymentsModule.redirectToMercadoPago(expense);
     },
 
     /**
-     * Marca un gasto como pagado
+     * Marca un gasto como pagado y pide comprobante (Ventana 4)
      * @param {string} id - ID del gasto
      */
     markAsPaid(id) {
         UI.openReceiptUploadModal(id, (receiptData) => {
-            // Guardar el comprobante SOLO en la colección de receipts (evitar duplicado)
-            let savedReceipt = null;
-            if (receiptData && receiptData.file) {
-                receiptData.expenseId = id;
-                savedReceipt = Storage.saveReceipt(receiptData);
+            if (!receiptData) {
+                // Si cancela la carga del comprobante, volvemos al estado anterior o dejamos en procesamiento
+                UI.showToast('Debés cargar el comprobante para finalizar', 'warning');
+                return;
             }
+
+            // Guardar el comprobante
+            receiptData.expenseId = id;
+            const savedReceipt = Storage.saveReceipt(receiptData);
             
-            // En el gasto fijo solo guardamos la referencia, no el archivo completo
+            // Actualizar el gasto fijo a PAGADO
             const updated = Storage.updateFixedExpense(id, {
                 status: CONSTANTS.EXPENSE_STATUS.PAID,
                 receipt: savedReceipt ? { id: savedReceipt.id, fileName: savedReceipt.fileName } : null,
@@ -536,19 +457,31 @@ const FixedModule = {
             });
 
             if (updated) {
-                UI.showToast('Pago registrado correctamente', 'success');
+                UI.showToast('¡Servicio pagado con éxito!', 'success');
                 this.render();
                 
-                // Actualizar la galería de comprobantes
-                if (typeof ReceiptsModule !== 'undefined') {
-                    ReceiptsModule.render();
-                }
-                
-                if (typeof App !== 'undefined') {
-                    App.updateDashboard();
-                }
+                if (typeof ReceiptsModule !== 'undefined') ReceiptsModule.render();
+                if (typeof App !== 'undefined') App.updateDashboard();
             }
         });
+    },
+
+    /**
+     * Inicia el proceso de pago para servicios con factura ya cargada
+     */
+    initiatePayment(id) {
+        const expense = Storage.getFixedExpenses().find(e => e.id === id);
+        if (!expense || !expense.invoiceData) return;
+        
+        // Re-mostrar la ventana de resultados para proceder al pago
+        this.showExtractionResults(id, {
+            ...expense.invoiceData,
+            amountFormatted: Utils.formatCurrency(expense.invoiceData.amount),
+            dueDateFormatted: Utils.formatDate(expense.invoiceData.dueDate),
+            provider: { name: expense.invoiceData.providerName }
+        }, expense.invoice, { name: expense.invoiceData.fileName });
+        
+        UI.openModal('invoice-modal');
     },
 
     /**
@@ -561,7 +494,6 @@ const FixedModule = {
         const { key } = Utils.getCurrentMonthYear();
         const expenses = Storage.getFixedExpenses().filter(e => e.monthKey === key);
         
-        // Ordenar: pendientes primero, pagados al final
         expenses.sort((a, b) => {
             const statusOrder = {
                 [CONSTANTS.EXPENSE_STATUS.ERROR]: 0,
@@ -603,47 +535,31 @@ const FixedModule = {
             </div>
         `;
 
-        // Bindear eventos
         this.bindItemEvents(container);
     },
 
     /**
      * Bindea los eventos de los items
-     * @param {HTMLElement} container - Contenedor
      */
     bindItemEvents(container) {
-        // Botones de cargar factura
         container.querySelectorAll('.btn-upload-invoice').forEach(btn => {
             btn.addEventListener('click', () => this.openInvoiceModal(btn.dataset.id));
         });
 
-        // Botones de pagar
         container.querySelectorAll('.btn-pay').forEach(btn => {
             btn.addEventListener('click', () => this.initiatePayment(btn.dataset.id));
         });
 
-        // Botones de marcar como pagado
-        container.querySelectorAll('.btn-mark-paid').forEach(btn => {
-            btn.addEventListener('click', () => this.markAsPaid(btn.dataset.id));
-        });
-
-        // Botones de ver comprobante
         container.querySelectorAll('.btn-view-receipt').forEach(btn => {
             btn.addEventListener('click', () => {
                 const expense = Storage.getFixedExpenses().find(e => e.id === btn.dataset.id);
                 if (expense && expense.receipt) {
-                    // Buscar el comprobante completo en Storage
                     const receipt = Storage.getReceipts().find(r => r.id === expense.receipt.id);
-                    if (receipt) {
-                        ReceiptsModule.viewReceipt(receipt);
-                    } else {
-                        UI.showToast('No se encontró el comprobante', 'error');
-                    }
+                    if (receipt) ReceiptsModule.viewReceipt(receipt);
                 }
             });
         });
 
-        // Botones de eliminar
         container.querySelectorAll('.btn-delete').forEach(btn => {
             btn.addEventListener('click', () => this.delete(btn.dataset.id));
         });
@@ -651,8 +567,6 @@ const FixedModule = {
 
     /**
      * Renderiza un item de gasto fijo
-     * @param {object} expense - Datos del gasto
-     * @returns {string} HTML del item
      */
     renderExpenseItem(expense) {
         const category = CONSTANTS.FIXED_CATEGORIES.find(c => c.id === expense.category) || 
@@ -662,9 +576,8 @@ const FixedModule = {
         const statusColor = CONSTANTS.STATUS_COLORS[expense.status];
         const statusIcon = CONSTANTS.STATUS_ICONS[expense.status];
         const isPaid = expense.status === CONSTANTS.EXPENSE_STATUS.PAID;
-        const hasInvoice = expense.status !== CONSTANTS.EXPENSE_STATUS.PENDING;
-        const canPay = expense.status === CONSTANTS.EXPENSE_STATUS.INVOICE_LOADED;
-        const isProcessing = expense.status === CONSTANTS.EXPENSE_STATUS.PROCESSING;
+        const isPending = expense.status === CONSTANTS.EXPENSE_STATUS.PENDING;
+        const isLoaded = expense.status === CONSTANTS.EXPENSE_STATUS.INVOICE_LOADED;
 
         return `
             <div class="list-item fixed-item ${isPaid ? 'paid' : ''}" data-id="${expense.id}">
@@ -688,28 +601,17 @@ const FixedModule = {
                 </div>
                 
                 <div class="item-actions">
-                    ${!hasInvoice ? `
+                    ${isPending ? `
                         <button class="action-btn action-btn-upload btn-upload-invoice" data-id="${expense.id}">
                             <i class="bi bi-file-earmark-plus"></i>
                             <span>Cargar factura</span>
                         </button>
                     ` : ''}
                     
-                    ${canPay ? `
+                    ${isLoaded ? `
                         <button class="action-btn action-btn-pay btn-pay" data-id="${expense.id}">
                             <i class="bi bi-credit-card"></i>
                             <span>Pagar</span>
-                        </button>
-                        <button class="action-btn action-btn-confirm btn-mark-paid" data-id="${expense.id}">
-                            <i class="bi bi-check-circle"></i>
-                            <span>Ya pagué</span>
-                        </button>
-                    ` : ''}
-                    
-                    ${isProcessing ? `
-                        <button class="action-btn action-btn-confirm btn-mark-paid" data-id="${expense.id}">
-                            <i class="bi bi-check-circle"></i>
-                            <span>Confirmar pago</span>
                         </button>
                     ` : ''}
                     
@@ -726,16 +628,6 @@ const FixedModule = {
                 </div>
             </div>
         `;
-    },
-
-    /**
-     * Renderiza el selector de categorías
-     * @returns {string} HTML del selector
-     */
-    renderCategoryOptions() {
-        return CONSTANTS.FIXED_CATEGORIES.map(cat => `
-            <option value="${cat.id}">${cat.name}</option>
-        `).join('');
     }
 };
 
