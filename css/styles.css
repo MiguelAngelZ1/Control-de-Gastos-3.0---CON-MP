@@ -3185,3 +3185,119 @@ input[type="date"]:valid::before {
     justify-content: center;
 }
 
+
+/* Estilos para el Dashboard Moderno */
+.chart-container-modern {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    padding: var(--space-4) 0;
+}
+
+@media (min-width: 768px) {
+    .chart-container-modern {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--space-10);
+    }
+}
+
+.donut-chart-wrapper {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
+}
+
+.chart-details-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--space-4);
+}
+
+.detail-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    transition: transform var(--transition-fast);
+}
+
+.detail-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-light);
+}
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.detail-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.detail-pct {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    width: fit-content;
+}
+
+/* Colores específicos para el gráfico y las cards */
+.circle.fixed-paid, .detail-card.fixed-paid i { color: var(--accent-success); }
+.circle.fixed-paid { stroke: var(--accent-success); }
+.detail-card.fixed-paid .detail-pct { background: var(--accent-success-soft); color: var(--accent-success); }
+
+.circle.fixed-pending, .detail-card.fixed-pending i { color: var(--accent-warning); }
+.circle.fixed-pending { stroke: var(--accent-warning); }
+.detail-card.fixed-pending .detail-pct { background: var(--accent-warning-soft); color: var(--accent-warning); }
+
+.circle.weekly, .detail-card.weekly i { color: var(--accent-info); }
+.circle.weekly { stroke: var(--accent-info); }
+.detail-card.weekly .detail-pct { background: var(--accent-info-soft); color: var(--accent-info); }
+
+.circle.available, .detail-card.available i { color: var(--accent-primary); }
+.circle.available { stroke: var(--accent-primary); }
+.detail-card.available .detail-pct { background: var(--accent-primary-soft); color: var(--accent-primary); }
+
+.donut-chart {
+    position: relative;
+    width: 220px;
+    height: 220px;
+}
+
+.chart-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.chart-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}

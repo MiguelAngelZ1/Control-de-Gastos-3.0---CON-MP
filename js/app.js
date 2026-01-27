@@ -263,60 +263,74 @@ const App = {
         const container = document.getElementById('budget-chart');
         if (!container) return;
 
-        const { totalIncomes, totalFixedPaid, totalWeekly, balance } = summary;
+        const { totalIncomes, totalFixedPaid, totalFixedPending, totalWeekly, balance } = summary;
         
-        // Calcular porcentajes
-        const fixedPct = Utils.percentage(totalFixedPaid, totalIncomes);
+        // Calcular porcentajes sobre el total de ingresos
+        const fixedPaidPct = Utils.percentage(totalFixedPaid, totalIncomes);
+        const fixedPendingPct = Utils.percentage(totalFixedPending, totalIncomes);
         const weeklyPct = Utils.percentage(totalWeekly, totalIncomes);
         const availablePct = Utils.percentage(Math.max(balance, 0), totalIncomes);
 
-        // Calcular offsets para el gráfico circular de 3 segmentos
-        const fixedDash = `${fixedPct}, ${100 - fixedPct}`;
+        // Calcular offsets para el gráfico circular
+        const fixedPaidDash = `${fixedPaidPct}, ${100 - fixedPaidPct}`;
+        const fixedPendingDash = `${fixedPendingPct}, ${100 - fixedPendingPct}`;
         const weeklyDash = `${weeklyPct}, ${100 - weeklyPct}`;
         const availableDash = `${availablePct}, ${100 - availablePct}`;
-        const weeklyOffset = -fixedPct;
-        const availableOffset = -(fixedPct + weeklyPct);
+        
+        const fixedPendingOffset = -fixedPaidPct;
+        const weeklyOffset = -(fixedPaidPct + fixedPendingPct);
+        const availableOffset = -(fixedPaidPct + fixedPendingPct + weeklyPct);
 
         container.innerHTML = `
-            <div class="chart-container">
-                <div class="donut-chart">
-                    <svg viewBox="0 0 36 36" class="circular-chart">
-                        <path class="circle-bg" d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="circle fixed" stroke-dasharray="${fixedDash}" d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="circle weekly" stroke-dasharray="${weeklyDash}" 
-                            stroke-dashoffset="${weeklyOffset}" d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="circle available" stroke-dasharray="${availableDash}" 
-                            stroke-dashoffset="${availableOffset}" d="M18 2.0845
-                            a 15.9155 15.9155 0 0 1 0 31.831
-                            a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    </svg>
-                    <div class="chart-center">
-                        <span class="chart-label">Total</span>
-                        <span class="chart-value">${Utils.formatCurrency(totalIncomes)}</span>
+            <div class="chart-container-modern">
+                <div class="donut-chart-wrapper">
+                    <div class="donut-chart">
+                        <svg viewBox="0 0 36 36" class="circular-chart">
+                            <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="circle fixed-paid" stroke-dasharray="${fixedPaidDash}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="circle fixed-pending" stroke-dasharray="${fixedPendingDash}" stroke-dashoffset="${fixedPendingOffset}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="circle weekly" stroke-dasharray="${weeklyDash}" stroke-dashoffset="${weeklyOffset}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="circle available" stroke-dasharray="${availableDash}" stroke-dashoffset="${availableOffset}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        </svg>
+                        <div class="chart-center">
+                            <span class="chart-label">Ingresos</span>
+                            <span class="chart-value">${Utils.formatCurrency(totalIncomes)}</span>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="chart-legend">
-                    <div class="legend-item" data-tooltip="${fixedPct}% - Servicios pagados (luz, gas, internet, etc.)">
-                        <span class="legend-color fixed"></span>
-                        <span class="legend-label">Gastos Fijos</span>
-                        <span class="legend-value">${Utils.formatCurrency(totalFixedPaid)}</span>
+                <div class="chart-details-grid">
+                    <div class="detail-card fixed-paid">
+                        <div class="detail-header">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>Fijos Pagados</span>
+                        </div>
+                        <div class="detail-value">${Utils.formatCurrency(totalFixedPaid)}</div>
+                        <div class="detail-pct">${fixedPaidPct}%</div>
                     </div>
-                    <div class="legend-item" data-tooltip="${weeklyPct}% - Gastos del día a día (comida, transporte, etc.)">
-                        <span class="legend-color weekly"></span>
-                        <span class="legend-label">Gastos Variables</span>
-                        <span class="legend-value">${Utils.formatCurrency(totalWeekly)}</span>
+                    <div class="detail-card fixed-pending">
+                        <div class="detail-header">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Fijos Pendientes</span>
+                        </div>
+                        <div class="detail-value">${Utils.formatCurrency(totalFixedPending)}</div>
+                        <div class="detail-pct">${fixedPendingPct}%</div>
                     </div>
-                    <div class="legend-item" data-tooltip="${availablePct}% - Dinero restante para usar o ahorrar">
-                        <span class="legend-color available"></span>
-                        <span class="legend-label">Disponible</span>
-                        <span class="legend-value">${Utils.formatCurrency(Math.max(balance, 0))}</span>
+                    <div class="detail-card weekly">
+                        <div class="detail-header">
+                            <i class="bi bi-cart-fill"></i>
+                            <span>Gastos Variables</span>
+                        </div>
+                        <div class="detail-value">${Utils.formatCurrency(totalWeekly)}</div>
+                        <div class="detail-pct">${weeklyPct}%</div>
+                    </div>
+                    <div class="detail-card available">
+                        <div class="detail-header">
+                            <i class="bi bi-piggy-bank-fill"></i>
+                            <span>Disponible</span>
+                        </div>
+                        <div class="detail-value">${Utils.formatCurrency(Math.max(balance, 0))}</div>
+                        <div class="detail-pct">${availablePct}%</div>
                     </div>
                 </div>
             </div>
