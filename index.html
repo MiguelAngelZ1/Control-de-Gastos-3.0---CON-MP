@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Control de Gastos - Sistema de gestión financiera personal">
+    <meta name="theme-color" content="#0f0f0f">
+    <title> Control de Gastos</title>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <!-- Estilos -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <!-- ========== SIDEBAR ========== -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="bi bi-wallet2"></i>
+                    <span>Control de Gastos</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-tab="dashboard">
+                    <i class="bi bi-grid-1x2"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="incomes">
+                    <i class="bi bi-cash-stack"></i>
+                    <span>Ingresos</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="fixed">
+                    <i class="bi bi-house"></i>
+                    <span>Gastos Fijos</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="weekly">
+                    <i class="bi bi-calendar-week"></i>
+                    <span>Gastos Semanales</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="receipts">
+                    <i class="bi bi-receipt"></i>
+                    <span>Comprobantes</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="sidebar-version">
+                    <i class="bi bi-info-circle"></i>
+                    <span>Versión 1.0</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========== MAIN CONTENT ========== -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <button class="menu-toggle" id="menu-toggle" aria-label="Menú">
+                    <i class="bi bi-list"></i>
+                </button>
+                <h1 class="page-title" id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <div class="header-date" id="header-full-date" title="Fecha actual">
+                        <i class="bi bi-calendar3"></i>
+                        <span class="header-date-text" id="current-date-display"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                
+                <!-- ========== TAB: DASHBOARD ========== -->
+                <div class="tab-content active" id="tab-dashboard">
+                    <!-- Recordatorios de vencimientos -->
+                    <div id="reminders-container"></div>
+                    
+                    <!-- Cards de resumen -->
+                    <div class="dashboard-cards">
+                        <div class="stat-card income clickable" id="card-total-income" data-navigate="incomes" title="Ver ingresos">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <i class="bi bi-arrow-down-circle"></i>
+                                </div>
+                                <span class="stat-card-label">Ingresos del mes</span>
+                            </div>
+                            <div class="card-value">$0</div>
+                            <div class="card-link-hint"><i class="bi bi-arrow-right"></i></div>
+                        </div>
+
+                        <div class="stat-card expense clickable" id="card-fixed-expenses" data-navigate="fixed" title="Ver gastos fijos">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <i class="bi bi-house"></i>
+                                </div>
+                                <span class="stat-card-label">Gastos Fijos</span>
+                            </div>
+                            <div class="card-value">$0</div>
+                            <div class="mini-progress">
+                                <div class="mini-progress-fill" style="width: 0%"></div>
+                            </div>
+                            <div class="card-link-hint"><i class="bi bi-arrow-right"></i></div>
+                        </div>
+
+                        <div class="stat-card budget clickable" id="card-weekly-budget" data-navigate="weekly" title="Ver gastos semanales">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <i class="bi bi-calendar-week"></i>
+                                </div>
+                                <span class="stat-card-label">Presupuesto semanal</span>
+                            </div>
+                            <div class="card-value">$0</div>
+                            <div class="card-link-hint"><i class="bi bi-arrow-right"></i></div>
+                        </div>
+
+                        <div class="stat-card balance" id="card-balance">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon">
+                                    <i class="bi bi-piggy-bank"></i>
+                                </div>
+                                <span class="stat-card-label">Balance disponible</span>
+                            </div>
+                            <div class="card-value">$0</div>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico y resumen -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-pie-chart"></i>
+                                Resumen de Gastos
+                            </h3>
+                        </div>
+                        <div id="budget-chart"></div>
+                    </div>
+
+                    <!-- Resumen semanal -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-bar-chart"></i>
+                                Gastos por semana
+                            </h3>
+                        </div>
+                        <div id="weekly-overview"></div>
+                    </div>
+                </div>
+
+                <!-- ========== TAB: INGRESOS ========== -->
+                <div class="tab-content" id="tab-incomes">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-plus-circle"></i>
+                                Registrar ingreso
+                            </h3>
+                        </div>
+                        <form id="income-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="income-description">Descripción</label>
+                                    <input type="text" id="income-description" name="description" class="form-control" placeholder="Ej: Sueldo, Freelance..." required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="income-amount">Monto</label>
+                                    <div class="input-with-prefix">
+                                        <span class="input-prefix">$</span>
+                                        <input type="text" id="income-amount" name="amount" class="form-control money-input" placeholder="0" inputmode="numeric" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg"></i> Agregar ingreso
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-list-ul"></i>
+                                Mis ingresos
+                            </h3>
+                        </div>
+                        <div id="incomes-list"></div>
+                    </div>
+                </div>
+
+                <!-- ========== TAB: GASTOS SEMANALES ========== -->
+                <div class="tab-content" id="tab-weekly">
+                    <!-- Tabs de semanas -->
+                    <div id="week-tabs"></div>
+
+                    <!-- Resumen de la semana -->
+                    <div id="weekly-summary"></div>
+
+                    <!-- Formulario -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-plus-circle"></i>
+                                Registrar gasto
+                            </h3>
+                        </div>
+                        <form id="weekly-expense-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="weekly-description">Descripción</label>
+                                    <input type="text" id="weekly-description" name="description" class="form-control" placeholder="¿En qué gastaste?" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="weekly-amount">Monto</label>
+                                    <div class="input-with-prefix">
+                                        <span class="input-prefix">$</span>
+                                        <input type="text" id="weekly-amount" name="amount" class="form-control money-input" placeholder="0" inputmode="numeric" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="weekly-category">Categoría</label>
+                                <div class="select-with-icon">
+                                    <i class="bi bi-tag select-icon" id="weekly-category-icon"></i>
+                                    <select id="weekly-category" name="category" class="form-control has-icon">
+                                        <option value="food">Alimentación</option>
+                                        <option value="transport">Transporte</option>
+                                        <option value="entertainment">Entretenimiento</option>
+                                        <option value="health">Salud</option>
+                                        <option value="clothing">Ropa</option>
+                                        <option value="education">Educación</option>
+                                        <option value="personal">Personal</option>
+                                        <option value="other">Otro</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg"></i> Agregar gasto
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Lista de gastos -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-receipt"></i>
+                                Gastos de la semana
+                            </h3>
+                        </div>
+                        <div id="weekly-expenses-list"></div>
+                    </div>
+                </div>
+
+                <!-- ========== TAB: GASTOS FIJOS ========== -->
+                <div class="tab-content" id="tab-fixed">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-plus-circle"></i>
+                                Agregar servicio
+                            </h3>
+                        </div>
+                        <form id="fixed-expense-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="fixed-name">Nombre del servicio</label>
+                                    <input type="text" id="fixed-name" name="name" class="form-control" placeholder="Ej: Luz, Gas, Internet..." required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="fixed-amount">Monto estimado</label>
+                                    <div class="input-with-prefix">
+                                        <span class="input-prefix">$</span>
+                                        <input type="text" id="fixed-amount" name="amount" class="form-control money-input" placeholder="0" inputmode="numeric" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="fixed-category">Categoría</label>
+                                    <div class="select-with-icon">
+                                        <i class="bi bi-lightning-charge select-icon" id="fixed-category-icon"></i>
+                                        <select id="fixed-category" name="category" class="form-control has-icon">
+                                            <option value="electricity">Luz</option>
+                                            <option value="gas">Gas</option>
+                                            <option value="water">Agua</option>
+                                            <option value="internet">Internet</option>
+                                            <option value="phone">Teléfono</option>
+                                            <option value="rent">Alquiler</option>
+                                            <option value="netflix">Netflix</option>
+                                            <option value="spotify">Spotify</option>
+                                            <option value="insurance">Seguro</option>
+                                            <option value="other">Otro</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="fixed-due">Fecha de vencimiento</label>
+                                    <input type="date" id="fixed-due" name="dueDate" class="form-control">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg"></i> Agregar servicio
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-house-gear"></i>
+                                Mis servicios
+                            </h3>
+                        </div>
+                        <div id="fixed-expenses-list"></div>
+                    </div>
+                </div>
+
+                <!-- ========== TAB: COMPROBANTES ========== -->
+                <div class="tab-content" id="tab-receipts">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="bi bi-folder2-open"></i>
+                                Comprobantes de pagos guardados
+                            </h3>
+                        </div>
+                        <div id="receipts-gallery"></div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ========== MODALES ========== -->
+    
+    <!-- Modal: Confirmación -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal">
+            <div class="modal-body">
+                <div class="confirm-content">
+                    <i class="bi bi-exclamation-circle confirm-icon"></i>
+                    <p class="confirm-message">¿Estás seguro?</p>
+                    <div class="confirm-actions">
+                        <button class="btn btn-danger" id="confirm-yes">Sí, confirmar</button>
+                        <button class="btn btn-secondary" id="confirm-no">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Cargar Factura -->
+    <div class="modal-overlay" id="invoice-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Cargar factura</h3>
+                <button class="modal-close" data-close-modal="invoice-modal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Cargar Comprobante -->
+    <div class="modal-overlay" id="receipt-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Adjuntar comprobante</h3>
+                <button class="modal-close" data-close-modal="receipt-modal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ver Comprobante -->
+    <div class="modal-overlay" id="view-receipt-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Comprobante</h3>
+                <button class="modal-close" data-close-modal="view-receipt-modal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Simulación de Pago -->
+    <div class="modal-overlay" id="payment-simulation-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Pago con Mercado Pago</h3>
+                <button class="modal-close" data-close-modal="payment-simulation-modal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SCRIPTS ========== -->
+    <!-- Core -->
+    <script src="js/constants.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    
+    <!-- UI -->
+    <script src="js/JsBarcode.all.min.js"></script>
+    <script src="js/ui.js"></script>
+    
+    <!-- Modules -->
+    <script src="js/modules/incomes.js"></script>
+    <script src="js/modules/weekly.js"></script>
+    <script src="js/modules/fixed.js"></script>
+    <script src="js/modules/receipts.js"></script>
+    <script src="js/modules/payments.js"></script>
+    
+    <!-- App -->
+    <script src="js/app.js"></script>
+</body>
+</html>

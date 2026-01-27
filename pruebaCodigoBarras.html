@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Extractor Inteligente de Gastos</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <style>
+        :root { --primary: #1a73e8; --danger: #d93025; --gray: #5f6368; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .btn-main {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+
+        input[type="file"] { display: none; }
+
+        .result-card {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            display: none;
+            text-align: center;
+        }
+
+        .company {
+            color: var(--primary);
+            font-size: 1.3rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .amount {
+            font-size: 2.6rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .vence-tag {
+            background: #fce8e6;
+            color: var(--danger);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .barcode-area {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .status {
+            display: none;
+            margin: 15px;
+            color: var(--gray);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+<div class="upload-section">
+    <h3>Procesar Nueva Factura</h3>
+    <p style="color: var(--gray); font-size: 0.9rem;">
+        Subí un comprobante para extraer los datos automáticamente
+    </p>
+
+    <label class="btn-main">
+        📁 Seleccionar Factura
+        <input type="file" accept="application/pdf,image/*" onchange="analizarDocumento()">
+    </label>
+
+    <div id="loadingStatus" class="status">Analizando con IA...</div>
+</div>
+
+<div id="cardResultado" class="result-card">
+    <p id="label-empresa" class="company"></p>
+    <div id="label-monto" class="amount"></div>
+    <span id="label-vence" class="vence-tag"></span>
+
+    <div class="barcode-area">
+        <svg id="barcode-view"></svg>
+    </div>
+
+    <button class="btn-main" onclick="confirmarGasto()">Confirmar y Guardar</button>
+</div>
+
+<script>
+function analizarDocumento() {
+    const status = document.getElementById('loadingStatus');
+    const card = document.getElementById('cardResultado');
+
+    status.style.display = 'block';
+    card.style.display = 'none';
+
+    setTimeout(() => {
+        const dataIA = {
+            empresa: "SCPL Comodoro",
+            total: 15752.48,
+            vencimiento: "12/01/2026",
+            barcode: "55700001575248260120320007016689030000015"
+        };
+
+        pintarResultados(dataIA);
+        status.style.display = 'none';
+        card.style.display = 'block';
+    }, 1200);
+}
+
+function pintarResultados(datos) {
+    document.getElementById('label-empresa').innerText = datos.empresa || "Empresa no detectada";
+    document.getElementById('label-vence').innerText =
+        datos.vencimiento ? "VENCE: " + datos.vencimiento : "";
+
+    document.getElementById('label-monto').innerText =
+        new Intl.NumberFormat('es-AR', {
+            style: 'currency',
+            currency: 'ARS'
+        }).format(datos.total || 0);
+
+    if (datos.barcode && datos.barcode.length > 10) {
+        JsBarcode("#barcode-view", datos.barcode, {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 3,
+            height: 90,
+            margin: 10,
+            displayValue: true,
+            fontSize: 14,
+            background: "#ffffff"
+        });
+    }
+}
+</script>
+
+</body>
+</html>
