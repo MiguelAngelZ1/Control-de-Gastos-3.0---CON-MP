@@ -39,8 +39,8 @@ REGLAS CRÍTICAS PARA EL CÓDIGO DE BARRAS:
 6. Si hay múltiples códigos largos, prefiere el que tenga 40+ dígitos.
 
 REGLAS PARA OTROS CAMPOS:
-- "provider": Nombre de la empresa emisora (ej: Edenor, Metrogas, Telecom, AySA, Personal, Edesur, Naturgy, etc). Debe ser el nombre comercial. NO devuelvas "No identificado" si hay un nombre de empresa en el texto.
-- "customerName": Nombre del titular del servicio. Suele estar cerca de la dirección o arriba de la factura. Busca nombres propios (Ej: JUAN PEREZ). NO devuelvas "No detectado" si hay un nombre propio en la cabecera.
+- "provider": Nombre de la empresa emisora (ej: Edenor, Metrogas, Telecom, AySA, Personal, Edesur, Naturgy, etc). Debe ser el nombre comercial. Analiza el encabezado y pie de página. NO devuelvas "No identificado" si hay cualquier indicio de una empresa de servicios.
+- "customerName": Nombre del titular del servicio. Busca nombres propios (Ej: JUAN PEREZ, MARIA GARCIA). Suele estar debajo del logo o cerca de la dirección de suministro. Ignora términos como "Señor/a", "Titular", "Cliente". NO devuelvas "No detectado" si hay un nombre de persona en la factura.
 - "amount": Total a pagar FINAL (número decimal, ej: 15420.50).
 - "dueDate": Fecha de vencimiento en formato YYYY-MM-DD.
 - "reference": Número de referencia o código de pago electrónico corto.

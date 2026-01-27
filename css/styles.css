@@ -1256,22 +1256,30 @@ input, textarea, select {
 .circle.weekly { stroke: var(--accent-warning); }
 .circle.available { stroke: var(--accent-success); }
 
-.chart-center {
+.donut-chart-text {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    width: 65%;
-    max-width: 100px;
+    width: 80%; /* Reducido para dejar margen interno */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     overflow: hidden;
 }
 
-.chart-label {
+.donut-chart-value {
     display: block;
-    font-size: 0.5625rem;
-    font-weight: 600;
-    color: var(--text-muted);
+    font-size: clamp(1rem, 5vw, 1.75rem); /* Tamaño dinámico */
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.1;
+    white-space: nowrap; /* Asegura una sola línea */
+    width: 100%;
+    text-overflow: ellipsis;
+}uted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }

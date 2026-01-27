@@ -149,9 +149,19 @@ app.post('/api/invoice/upload', upload.single('invoice'), async (req, res) => {
             
             // Normalizar datos de Gemini al formato esperado
             if (!parseResult.confidence) parseResult.confidence = { amount: 95, date: 95, barcode: 95 };
-            if (!parseResult.provider && parseResult.providerName) parseResult.provider = { name: parseResult.providerName };
-            // Asegurar que provider sea objeto
-            if (typeof parseResult.provider === 'string') parseResult.provider = { name: parseResult.provider };
+            
+            // Mapear campos de Gemini a la estructura del frontend
+            if (parseResult.customerName && !parseResult.titular) {
+                parseResult.titular = parseResult.customerName;
+            }
+            
+            if (parseResult.provider) {
+                if (typeof parseResult.provider === 'string') {
+                    parseResult.provider = { name: parseResult.provider };
+                }
+            } else if (parseResult.providerName) {
+                parseResult.provider = { name: parseResult.providerName };
+            }
             
             // Verificar código de barras largo
             parseResult.barcodeLength = parseResult.barcode ? parseResult.barcode.length : 0;

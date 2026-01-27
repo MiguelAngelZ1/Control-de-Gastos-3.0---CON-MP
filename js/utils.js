@@ -335,93 +335,35 @@ const Utils = {
      */
     initMoneyInputs() {
         document.querySelectorAll('.money-input').forEach(input => {
-            // Formatear al escribir
-            input.addEventListener('input', (e) => {
-                const cursorPos = e.target.selectionStart;
-                const oldLength = e.target.value.length;
-                const formatted = Utils.formatNumberWithThousands(e.target.value);
-                e.target.value = formatted;
-                
-                // Ajustar posición del cursor
-                const newLength = formatted.length;
-                const diff = newLength - oldLength;
-                const newPos = cursorPos + diff;
-                e.target.setSelectionRange(newPos, newPos);
-            });
-
-            // Formatear al perder foco
-            input.addEventListener('blur', (e) => {
-                if (e.target.value) {
-                    e.target.value = Utils.formatNumberWithThousands(e.target.value);
+            // Soporte para coma decimal
+            input.addEventListener('keydown', (e) => {
+                if (e.key === ',') {
+                    e.preventDefault();
+                    const start = input.selectionStart;
+                    const end = input.selectionEnd;
+                    const value = input.value;
+                    
+                    // Si ya hay un punto, no permitir otro
+                    if (value.includes('.')) return;
+                    
+                    input.value = value.substring(0, start) + '.' + value.substring(end);
+                    input.selectionStart = input.selectionEnd = start + 1;
                 }
             });
 
-            // Limpiar al hacer foco si está vacío
-            input.addEventListener('focus', (e) => {
-                if (e.target.value === '0') {
-                    e.target.value = '';
+            // Formatear al escribir (solo la parte entera)
+            input.addEventListener('input', (e) => {
+                const value = e.target.value;
+                if (value.includes('.')) {
+                    const parts = value.split('.');
+                    const integerPart = this.formatNumberWithThousands(parts[0]);
+                    const decimalPart = parts[1].substring(0, 2); // Máximo 2 decimales
+                    e.target.value = `${integerPart}.${decimalPart}`;
+                } else {
+                    e.target.value = this.formatNumberWithThousands(value);
                 }
             });
         });
-    },
-
-    /**
-     * Inicializa selects con iconos dinámicos
-     */
-    initIconSelects() {
-        // Select de gastos semanales
-        const weeklySelect = document.getElementById('weekly-category');
-        const weeklyIcon = document.getElementById('weekly-category-icon');
-        
-        if (weeklySelect && weeklyIcon) {
-            const weeklyIconMap = {
-                'food': 'bi-cart',
-                'transport': 'bi-car-front',
-                'entertainment': 'bi-controller',
-                'health': 'bi-heart-pulse',
-                'clothing': 'bi-bag',
-                'education': 'bi-book',
-                'personal': 'bi-person',
-                'other': 'bi-three-dots'
-            };
-
-            // Establecer icono inicial
-            const initialWeeklyValue = weeklySelect.value;
-            weeklyIcon.className = `bi ${weeklyIconMap[initialWeeklyValue] || 'bi-tag'} select-icon`;
-
-            weeklySelect.addEventListener('change', (e) => {
-                const selectedValue = e.target.value;
-                weeklyIcon.className = `bi ${weeklyIconMap[selectedValue] || 'bi-tag'} select-icon`;
-            });
-        }
-
-        // Select de gastos fijos
-        const fixedSelect = document.getElementById('fixed-category');
-        const fixedIcon = document.getElementById('fixed-category-icon');
-        
-        if (fixedSelect && fixedIcon) {
-            const fixedIconMap = {
-                'electricity': 'bi-lightning-charge',
-                'gas': 'bi-fire',
-                'water': 'bi-droplet',
-                'internet': 'bi-wifi',
-                'phone': 'bi-phone',
-                'rent': 'bi-house',
-                'netflix': 'bi-tv',
-                'spotify': 'bi-music-note-beamed',
-                'insurance': 'bi-shield-check',
-                'other': 'bi-three-dots'
-            };
-
-            // Establecer icono inicial
-            const initialFixedValue = fixedSelect.value;
-            fixedIcon.className = `bi ${fixedIconMap[initialFixedValue] || 'bi-lightning-charge'} select-icon`;
-
-            fixedSelect.addEventListener('change', (e) => {
-                const selectedValue = e.target.value;
-                fixedIcon.className = `bi ${fixedIconMap[selectedValue] || 'bi-tag'} select-icon`;
-            });
-        }
     }
 };
 
