@@ -54,29 +54,78 @@
         padding: var(--space-5);
     }
     
-    /* Mejorar modales en móvil */
+    /* Mejorar modales en móvil - que quepan en pantalla */
+    .modal-overlay {
+        padding: var(--space-3);
+        align-items: flex-start;
+        padding-top: 60px;
+    }
+    
     .modal {
-        margin: var(--space-4);
-        max-width: calc(100% - 2rem);
-        max-height: calc(100vh - 2rem);
+        margin: 0;
+        width: 100%;
+        max-width: calc(100vw - 1.5rem);
+        max-height: calc(100vh - 80px);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
     
     .modal-header {
-        padding: var(--space-4);
+        padding: var(--space-3) var(--space-4);
+        flex-shrink: 0;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .modal-header .modal-title {
+        font-size: 1rem;
+        margin: 0;
+        padding-right: var(--space-8);
+    }
+    
+    .modal-close {
+        position: absolute;
+        right: var(--space-3);
+        top: 50%;
+        transform: translateY(-50%);
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-md);
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        border: none;
+        cursor: pointer;
+        z-index: 10;
+    }
+    
+    .modal-close:hover {
+        background: var(--bg-elevated);
+        color: var(--text-primary);
     }
     
     .modal-body {
         padding: var(--space-4);
+        overflow-y: auto;
+        flex: 1;
+        -webkit-overflow-scrolling: touch;
     }
     
     .modal-footer {
-        padding: var(--space-4);
+        padding: var(--space-3) var(--space-4);
         flex-wrap: wrap;
+        flex-shrink: 0;
+        gap: var(--space-2);
     }
     
     .modal-footer .btn {
         flex: 1;
-        min-width: 120px;
+        min-width: 100px;
     }
     
     /* Mejorar tablas responsive */
@@ -115,16 +164,18 @@
         min-height: 48px;
     }
     
-    /* Mejorar toast en móvil */
+    /* Mejorar toast en móvil - posicionar debajo del header */
     #toast-container {
-        top: calc(var(--header-height) + var(--space-4)); /* Debajo del header fijo */
+        top: 80px !important; /* 64px header + 16px espacio */
         left: var(--space-4);
         right: var(--space-4);
         max-width: calc(100% - 2rem);
+        z-index: 9999;
     }
     
     .toast {
         width: 100%;
+        box-shadow: var(--shadow-lg);
     }
     
     /* Mejorar header actions */
@@ -156,6 +207,30 @@
     /* Mejorar gráficos */
     .chart-container {
         padding: var(--space-3);
+    }
+    
+    /* Corregir gráfico donut en móvil */
+    .donut-chart {
+        width: 160px !important;
+        height: 160px !important;
+        margin: 0 auto;
+    }
+    
+    .chart-center {
+        width: 60% !important;
+        max-width: 80px !important;
+    }
+    
+    .chart-value {
+        font-size: 0.75rem !important;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
+        line-height: 1.2;
+    }
+    
+    .chart-label {
+        font-size: 0.625rem !important;
     }
     
     /* Mejorar receipt viewer */
@@ -210,28 +285,41 @@
         padding: var(--space-3);
     }
     
-    /* Ocultar textos largos en botones pequeños, excepto en gastos fijos */
+    /* Ocultar textos en botones de acción generales */
     .action-btn span {
         display: none;
-    }
-    
-    /* Mostrar texto en botones de gastos fijos */
-    .fixed-items .action-btn span {
-        display: inline;
     }
     
     .action-btn i {
         margin: 0;
     }
     
+    /* Mostrar texto en botones de gastos fijos (excepto eliminar) */
+    .fixed-items .action-btn span {
+        display: inline;
+    }
+    
+    /* Ocultar texto solo en botón de eliminar (el tacho es evidente) */
+    .fixed-items .action-btn-delete span {
+        display: none;
+    }
+    
     .fixed-items .action-btn i {
         margin-right: var(--space-2);
+    }
+    
+    .fixed-items .action-btn-delete i {
+        margin-right: 0;
     }
     
     /* Hacer botones de gastos fijos más pequeños pero legibles */
     .fixed-items .action-btn {
         font-size: 0.8125rem;
         padding: var(--space-2) var(--space-3);
+    }
+    
+    .fixed-items .action-btn-delete {
+        padding: var(--space-2);
     }
     
     /* Mantener texto en botones principales */

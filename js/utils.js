@@ -332,66 +332,68 @@ const Utils = {
 
     /**
      * Inicializa los inputs de dinero con formateo automático
+     * Usa COMA como separador de miles y PUNTO como separador decimal
+     * Ejemplo: 1.234.567,89
      */
     initMoneyInputs() {
+        const self = this;
+        
         document.querySelectorAll('.money-input').forEach(input => {
-            let lastValidValue = '';
+            // Remover listeners anteriores clonando el elemento
+            const newInput = input.cloneNode(true);
+            input.parentNode.replaceChild(newInput, input);
             
-            // Soporte para coma decimal
-            input.addEventListener('keydown', (e) => {
-                if (e.key === ',') {
-                    e.preventDefault();
-                    const start = input.selectionStart;
-                    const end = input.selectionEnd;
-                    const value = input.value;
-                    
-                    // Si ya hay un punto, no permitir otro
-                    if (value.includes('.')) return;
-                    
-                    input.value = value.substring(0, start) + '.' + value.substring(end);
-                    input.selectionStart = input.selectionEnd = start + 1;
-                }
-            });
-
             // Formatear al escribir
-            input.addEventListener('input', (e) => {
+            newInput.addEventListener('input', function(e) {
                 let value = e.target.value;
                 
                 // Si está vacío, permitir
-                if (!value) {
-                    lastValidValue = '';
-                    return;
+                if (!value) return;
+                
+                // Reemplazar coma por punto para decimales
+                value = value.replace(',', '.');
+                
+                // Remover todo excepto dígitos y un punto
+                let cleanValue = '';
+                let hasDecimal = false;
+                
+                for (let char of value) {
+                    if (char >= '0' && char <= '9') {
+                        cleanValue += char;
+                    } else if (char === '.' && !hasDecimal) {
+                        cleanValue += char;
+                        hasDecimal = true;
+                    }
                 }
                 
                 // Si tiene punto decimal
-                if (value.includes('.')) {
-                    const parts = value.split('.');
+                if (cleanValue.includes('.')) {
+                    const parts = cleanValue.split('.');
+                    const integerPart = parts[0] || '0';
+                    const decimalPart = parts[1] ? parts[1].substring(0, 2) : '';
                     
-                    // Solo permitir un punto
-                    if (parts.length > 2) {
-                        e.target.value = lastValidValue;
-                        return;
-                    }
+                    // Formatear parte entera con puntos de miles
+                    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
                     
-                    // Formatear parte entera (sin puntos de miles si hay decimales)
-                    const integerPart = parts[0].replace(/\D/g, '');
-                    
-                    // Limitar decimales a 2 dígitos
-                    const decimalPart = parts[1] ? parts[1].replace(/\D/g, '').substring(0, 2) : '';
-                    
-                    // Construir valor formateado
-                    e.target.value = integerPart + (parts[1] !== undefined ? '.' + decimalPart : '.');
-                    lastValidValue = e.target.value;
+                    // Usar COMA para decimal (formato argentino)
+                    e.target.value = formattedInteger + ',' + decimalPart;
                 } else {
-                    // Solo parte entera, formatear con separadores de miles
-                    const formatted = this.formatNumberWithThousands(value);
-                    e.target.value = formatted;
-                    lastValidValue = formatted;
+                    // Solo parte entera, formatear con puntos de miles
+                    e.target.value = cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
                 }
             });
             
-            // Guardar valor inicial
-            lastValidValue = input.value;
+            // Permitir tecla coma para decimales
+            newInput.addEventListener('keydown', function(e) {
+                // Permitir coma como separador decimal
+                if (e.key === ',' || e.key === '.') {
+                    const value = e.target.value;
+                    // Si ya tiene coma, no permitir otra
+                    if (value.includes(',')) {
+                        e.preventDefault();
+                    }
+                }
+            });
         });
     }
 };

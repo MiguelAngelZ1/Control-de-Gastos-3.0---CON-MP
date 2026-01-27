@@ -246,12 +246,14 @@ class InvoiceParser {
         this.originalText = ocrText;
         this.text = this.normalizeText(ocrText);
         this.lines = this.text.split('\n').filter(l => l.trim());
+        this.originalLines = ocrText.split('\n').filter(l => l.trim());
         this.provider = null;
         this.results = {
             amount: null,
             dueDate: null,
             barcode: null,
             provider: null,
+            customerName: null,
             confidence: {},
             alternatives: {
                 amounts: [],
@@ -314,11 +316,19 @@ class InvoiceParser {
 
         // Paso 5: Validación cruzada
         this.crossValidate();
+        
+        // Paso 6: Extraer titular (nombre del cliente)
+        this.extractCustomerName();
+        
+        // Paso 7: Mejorar detección de empresa si no se encontró
+        this.improveProviderDetection();
 
         console.log('\n📊 RESULTADOS FINALES:');
         console.log(`   Monto: ${this.results.amount ? '$' + this.results.amount.toFixed(2) : 'No detectado'} (confianza: ${this.results.confidence.amount || 0}%)`);
         console.log(`   Fecha: ${this.results.dueDate || 'No detectada'} (confianza: ${this.results.confidence.date || 0}%)`);
         console.log(`   Código: ${this.results.barcode ? this.results.barcode.substring(0, 20) + '...' : 'No detectado'} (confianza: ${this.results.confidence.barcode || 0}%)`);
+        console.log(`   Empresa: ${this.results.provider?.name || 'No identificada'}`);
+        console.log(`   Titular: ${this.results.customerName || 'No detectado'}`);
         console.log('═'.repeat(60) + '\n');
 
         return this.results;
@@ -1056,6 +1066,141 @@ scoreBarcodes(barcodes) {
         }
 
         return false;
+    }
+    
+    /**
+     * PASO 6: Extraer nombre del titular/cliente
+     */
+    extractCustomerName() {
+        this.log('Buscando nombre del titular...');
+        
+        // Patrones para encontrar el nombre del titular
+        const patterns = [
+            // Después de "Sr./Sra./Señor/Señora:"
+            /(?:sr\.?|sra\.?|señor(?:a)?|sres\.?)[:\s]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{5,40})/i,
+            // Después de "Titular:"
+            /titular[:\s]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{5,40})/i,
+            // Después de "Cliente:"
+            /cliente[:\s]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{5,40})/i,
+            // Nombre en mayúsculas completo (APELLIDO NOMBRE)
+            /^([A-ZÁÉÍÓÚÑ]{2,}\s+[A-ZÁÉÍÓÚÑ]{2,}(?:\s+[A-ZÁÉÍÓÚÑ]{2,})?)$/m,
+            // Nombre después de "A nombre de:"
+            /a nombre de[:\s]+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{5,40})/i,
+        ];
+        
+        // Buscar en el texto original (no normalizado) para preservar mayúsculas
+        for (const pattern of patterns) {
+            const match = this.originalText.match(pattern);
+            if (match && match[1]) {
+                let name = match[1].trim();
+                
+                // Limpiar el nombre
+                name = name.replace(/\s+/g, ' ').trim();
+                
+                // Validar que parece un nombre (al menos 2 palabras, no muy largo)
+                const words = name.split(' ').filter(w => w.length > 1);
+                if (words.length >= 2 && name.length <= 50) {
+                    // Verificar que no sea una dirección o empresa
+                    const lowerName = name.toLowerCase();
+                    if (!lowerName.includes('calle') && 
+                        !lowerName.includes('s.a.') && 
+                        !lowerName.includes('s.r.l') &&
+                        !lowerName.includes('limitada') &&
+                        !lowerName.includes('sociedad')) {
+                        this.results.customerName = name;
+                        this.results.confidence.customerName = 80;
+                        this.log(`✓ Titular detectado: ${name}`);
+                        return;
+                    }
+                }
+            }
+        }
+        
+        // Búsqueda alternativa: buscar líneas con nombres en mayúsculas
+        for (const line of this.originalLines) {
+            // Buscar líneas que parecen nombres (2-4 palabras en mayúsculas)
+            const nameMatch = line.match(/^([A-ZÁÉÍÓÚÑ]{2,}(?:\s+[A-ZÁÉÍÓÚÑ]{2,}){1,3})\s*$/);
+            if (nameMatch) {
+                const name = nameMatch[1].trim();
+                // Verificar que no sea una empresa conocida o dirección
+                const lowerName = name.toLowerCase();
+                if (!lowerName.includes('edenor') && 
+                    !lowerName.includes('edesur') &&
+                    !lowerName.includes('metrogas') &&
+                    !lowerName.includes('telecom') &&
+                    !lowerName.includes('cooperativa') &&
+                    !lowerName.includes('sociedad') &&
+                    name.length >= 8 && name.length <= 40) {
+                    this.results.customerName = name;
+                    this.results.confidence.customerName = 60;
+                    this.log(`✓ Titular detectado (alternativo): ${name}`);
+                    return;
+                }
+            }
+        }
+        
+        this.log('⚠ No se pudo detectar el titular');
+    }
+    
+    /**
+     * PASO 7: Mejorar detección de empresa si no se encontró
+     */
+    improveProviderDetection() {
+        // Si ya tenemos proveedor, no hacer nada
+        if (this.results.provider) return;
+        
+        this.log('Intentando detectar empresa por métodos alternativos...');
+        
+        // Buscar patrones de empresas de servicios en el texto original
+        const companyPatterns = [
+            // Cooperativas
+            { pattern: /cooperativa[\s\w]*(?:popular|limitada|eléctrica|de\s+servicios)/i, name: 'Cooperativa', type: 'utility' },
+            { pattern: /scpl|s\.c\.p\.l/i, name: 'SCPL (Cooperativa)', type: 'utility' },
+            
+            // Empresas de servicios públicos
+            { pattern: /liq\.?\s*serv\.?\s*público/i, name: 'Servicio Público', type: 'utility' },
+            { pattern: /servicio\s+eléctrico/i, name: 'Servicio Eléctrico', type: 'electricity' },
+            { pattern: /servicio\s+de\s+agua/i, name: 'Servicio de Agua', type: 'water' },
+            { pattern: /servicio\s+de\s+gas/i, name: 'Servicio de Gas', type: 'gas' },
+            
+            // Municipalidades
+            { pattern: /municipalidad/i, name: 'Municipalidad', type: 'municipal' },
+            
+            // Buscar CUIT de empresas conocidas
+            { pattern: /cuit[:\s]*30-54572672/i, name: 'SCPL Comodoro Rivadavia', type: 'utility' },
+        ];
+        
+        for (const { pattern, name, type } of companyPatterns) {
+            if (pattern.test(this.originalText)) {
+                this.results.provider = {
+                    id: name.toLowerCase().replace(/\s+/g, '_'),
+                    name: name,
+                    type: type
+                };
+                this.log(`✓ Empresa detectada (alternativo): ${name}`);
+                return;
+            }
+        }
+        
+        // Último recurso: buscar en las primeras líneas
+        const firstLines = this.originalLines.slice(0, 10).join(' ');
+        
+        // Buscar nombre de empresa en mayúsculas al inicio
+        const companyMatch = firstLines.match(/^([A-ZÁÉÍÓÚÑ\s]{5,50}(?:S\.?A\.?|S\.?R\.?L\.?|LTDA\.?|LIMITADA)?)/m);
+        if (companyMatch) {
+            const companyName = companyMatch[1].trim();
+            if (companyName.length >= 5 && companyName.length <= 50) {
+                this.results.provider = {
+                    id: 'detected',
+                    name: companyName,
+                    type: 'unknown'
+                };
+                this.log(`✓ Empresa detectada (primera línea): ${companyName}`);
+                return;
+            }
+        }
+        
+        this.log('⚠ No se pudo detectar la empresa');
     }
 }
 

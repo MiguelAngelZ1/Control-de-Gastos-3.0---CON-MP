@@ -211,7 +211,11 @@ app.post('/api/invoice/upload', upload.single('invoice'), async (req, res) => {
                 barcodeLength: parseResult.barcodeLength,
                 barcodeConfidence: parseResult.confidence ? (parseResult.confidence.barcode || 0) : 0,
                 
-                provider: parseResult.provider
+                provider: parseResult.provider,
+                
+                // Titular del servicio
+                customerName: parseResult.customerName || parseResult.titular || null,
+                customerNameConfidence: parseResult.confidence ? (parseResult.confidence.customerName || 0) : 0
             },
             
             // Alternativas para selección manual
@@ -241,6 +245,7 @@ app.post('/api/invoice/upload', upload.single('invoice'), async (req, res) => {
         console.log(`   📅 Fecha: ${response.extracted.dueDateFormatted || '❌ No detectada'} (${response.extracted.dueDateConfidence}%)`);
         console.log(`   🔢 Código: ${response.extracted.barcode ? '✓ Detectado' : '❌ No detectado'} (${response.extracted.barcodeConfidence}%)`);
         console.log(`   🏢 Proveedor: ${response.extracted.provider?.name || 'No identificado'}`);
+        console.log(`   👤 Titular: ${response.extracted.customerName || 'No detectado'}`);
         console.log('═'.repeat(70) + '\n');
         
         res.json(response);

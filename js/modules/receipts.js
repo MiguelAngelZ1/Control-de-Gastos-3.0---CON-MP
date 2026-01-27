@@ -430,12 +430,25 @@ const ReceiptsModule = {
         const container = document.getElementById('receipts-gallery');
         if (!container) return;
 
-        // Filtrar solo comprobantes de pago del usuario (no facturas de servicios)
+        // Filtrar solo comprobantes de pago del usuario
+        // Los comprobantes válidos son los que:
+        // 1. Tienen expenseId (asociados a un gasto fijo)
+        // 2. Fueron subidos por el usuario como comprobante de pago (no facturas de servicio)
+        // 3. Tienen el campo uploadedAt (indica que fue subido manualmente)
         const allReceipts = Storage.getReceipts();
         const receipts = allReceipts.filter(receipt => {
-            // Solo mostrar comprobantes que tienen expenseId (asociados a un pago)
-            // y que NO son facturas de servicios (isInvoice !== true)
-            return receipt.expenseId && !receipt.isInvoice;
+            // Debe tener expenseId
+            if (!receipt.expenseId) return false;
+            
+            // Verificar que el gasto asociado esté pagado
+            const expense = Storage.getFixedExpenses().find(e => e.id === receipt.expenseId);
+            if (!expense) return false;
+            
+            // Solo mostrar si el gasto está pagado y el receipt coincide con el guardado
+            if (expense.status !== CONSTANTS.EXPENSE_STATUS.PAID) return false;
+            if (!expense.receipt || expense.receipt.id !== receipt.id) return false;
+            
+            return true;
         });
 
         if (receipts.length === 0) {
