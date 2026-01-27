@@ -430,7 +430,13 @@ const ReceiptsModule = {
         const container = document.getElementById('receipts-gallery');
         if (!container) return;
 
-        const receipts = Storage.getReceipts();
+        // Filtrar solo comprobantes de pago del usuario (no facturas de servicios)
+        const allReceipts = Storage.getReceipts();
+        const receipts = allReceipts.filter(receipt => {
+            // Solo mostrar comprobantes que tienen expenseId (asociados a un pago)
+            // y que NO son facturas de servicios (isInvoice !== true)
+            return receipt.expenseId && !receipt.isInvoice;
+        });
 
         if (receipts.length === 0) {
             container.innerHTML = `

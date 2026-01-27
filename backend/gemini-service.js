@@ -26,27 +26,68 @@ const GeminiService = {
             
             const response = await ai.models.generateContent({
                 model: 'gemini-2.0-flash-exp',
-                contents: `Eres un experto en facturas de servicios de Argentina.
+                contents: `Eres un EXPERTO MAESTRO en análisis de facturas de servicios de Argentina. Tu tarea es extraer información con PRECISIÓN ABSOLUTA.
 
-TAREA: Analiza el texto de una factura y extrae los datos en formato JSON.
+═══ PROMPT MAESTRO: EXTRACCIÓN DE FACTURAS ═══
 
-REGLAS CRÍTICAS PARA EL CÓDIGO DE BARRAS:
-1. El código de barras para pago electrónico (Interbanking/PMC/PagoMisCuentas) tiene entre 40 y 60 dígitos.
-2. NO uses códigos cortos de 20-30 dígitos - esos son códigos internos.
-3. NO uses el número de factura ni el número de cliente.
-4. Busca la secuencia numérica MÁS LARGA disponible (generalmente cerca de "código de barras", "pago electrónico", "Interbanking" o al final de la factura).
-5. Elimina TODOS los espacios del código de barras.
-6. Si hay múltiples códigos largos, prefiere el que tenga 40+ dígitos.
+✅ CAMPO 1: EMPRESA (provider)
+BUSCA en este ORDEN:
+1. Logo o nombre grande en el encabezado (primera línea)
+2. Razón social cerca del CUIT
+3. Nombre en el pie de página
+4. Cualquier mención de empresa de servicios
 
-REGLAS PARA OTROS CAMPOS:
-- "provider": Nombre de la empresa emisora (ej: Edenor, Metrogas, Telecom, AySA, Personal, Edesur, Naturgy, etc). Debe ser el nombre comercial. Analiza el encabezado y pie de página. NO devuelvas "No identificado" si hay cualquier indicio de una empresa de servicios.
-- "customerName": Nombre del titular del servicio. Busca nombres propios (Ej: JUAN PEREZ, MARIA GARCIA). Suele estar debajo del logo o cerca de la dirección de suministro. Ignora términos como "Señor/a", "Titular", "Cliente". NO devuelvas "No detectado" si hay un nombre de persona en la factura.
-- "amount": Total a pagar FINAL (número decimal, ej: 15420.50).
-- "dueDate": Fecha de vencimiento en formato YYYY-MM-DD.
-- "reference": Número de referencia o código de pago electrónico corto.
+EMPRESAS COMUNES: Edenor, Edesur, Metrogas, Naturgy, AySA, Telecom, Personal, Claro, Movistar, Fibertel
 
-Texto de la factura:
-${text.substring(0, 12000)}`,
+REGLA: Si encuentras CUALQUIER nombre de empresa, devúelvelo. NO devuelvas "No identificado" o "Desconocido".
+
+✅ CAMPO 2: TITULAR (customerName)
+BUSCA en este ORDEN:
+1. Después de "Titular:", "Cliente:", "Señor/a:"
+2. Cerca de "Dirección de suministro" o "Domicilio"
+3. Después del número de cliente
+4. En la sección superior de la factura
+
+FORMATO: Nombre completo en MAYÚSCULAS (ej: JUAN CARLOS PEREZ, MARIA FERNANDA GARCIA)
+
+REGLA: Si encuentras UN NOMBRE DE PERSONA, devúelvelo SIN prefijos (sin "Sr.", "Sra.", "Titular"). NO devuelvas "No detectado".
+
+✅ CAMPO 3: FECHA DE VENCIMIENTO (dueDate)
+BUSCA en este ORDEN:
+1. Después de "Vencimiento:", "Vto:", "Fecha de vencimiento:"
+2. "1er vencimiento" o "Primer vencimiento" (ignora 2do vencimiento)
+3. Cerca de "Total a pagar"
+4. En recuadros destacados o con fondo de color
+
+FORMATOS POSIBLES:
+- DD/MM/YYYY (ej: 25/01/2025)
+- DD-MM-YYYY (ej: 25-01-2025)
+- DD.MM.YYYY (ej: 25.01.2025)
+- DD de MES de YYYY (ej: 25 de enero de 2025)
+
+CONVERSIÓN: Siempre devuelve en formato YYYY-MM-DD (ej: 2025-01-25)
+
+REGLA: Si hay múltiples fechas, usa la más cercana a "vencimiento" o "total a pagar". NO uses la fecha de emisión.
+
+✅ CAMPO 4: MONTO (amount)
+BUSCA "Total a pagar", "Importe a pagar", "Total factura"
+FORMATO: Número decimal (ej: 15420.50)
+REGLA: Usa el monto FINAL, no subtotales.
+
+✅ CAMPO 5: CÓDIGO DE BARRAS (barcode)
+BUSCA secuencia de 40-60 dígitos cerca de:
+- "Código de barras"
+- "Pago electrónico"
+- "Interbanking"
+- "PMC" o "PagoMisCuentas"
+
+REGLA: Debe tener 40-60 dígitos. NO uses códigos de 20-30 dígitos.
+
+═══ TEXTO DE LA FACTURA ═══
+${text.substring(0, 12000)}
+
+═══ INSTRUCCIONES FINALES ═══
+Analiza TODO el texto. NO omitas campos. Si un campo es difícil de encontrar, BUSCA MÁS. Devuelve JSON válido.`,
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: {

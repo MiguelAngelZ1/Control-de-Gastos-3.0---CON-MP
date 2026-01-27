@@ -335,6 +335,8 @@ const Utils = {
      */
     initMoneyInputs() {
         document.querySelectorAll('.money-input').forEach(input => {
+            let lastValidValue = '';
+            
             // Soporte para coma decimal
             input.addEventListener('keydown', (e) => {
                 if (e.key === ',') {
@@ -351,18 +353,45 @@ const Utils = {
                 }
             });
 
-            // Formatear al escribir (solo la parte entera)
+            // Formatear al escribir
             input.addEventListener('input', (e) => {
-                const value = e.target.value;
+                let value = e.target.value;
+                
+                // Si está vacío, permitir
+                if (!value) {
+                    lastValidValue = '';
+                    return;
+                }
+                
+                // Si tiene punto decimal
                 if (value.includes('.')) {
                     const parts = value.split('.');
-                    const integerPart = this.formatNumberWithThousands(parts[0]);
-                    const decimalPart = parts[1].substring(0, 2); // Máximo 2 decimales
-                    e.target.value = `${integerPart}.${decimalPart}`;
+                    
+                    // Solo permitir un punto
+                    if (parts.length > 2) {
+                        e.target.value = lastValidValue;
+                        return;
+                    }
+                    
+                    // Formatear parte entera (sin puntos de miles si hay decimales)
+                    const integerPart = parts[0].replace(/\D/g, '');
+                    
+                    // Limitar decimales a 2 dígitos
+                    const decimalPart = parts[1] ? parts[1].replace(/\D/g, '').substring(0, 2) : '';
+                    
+                    // Construir valor formateado
+                    e.target.value = integerPart + (parts[1] !== undefined ? '.' + decimalPart : '.');
+                    lastValidValue = e.target.value;
                 } else {
-                    e.target.value = this.formatNumberWithThousands(value);
+                    // Solo parte entera, formatear con separadores de miles
+                    const formatted = this.formatNumberWithThousands(value);
+                    e.target.value = formatted;
+                    lastValidValue = formatted;
                 }
             });
+            
+            // Guardar valor inicial
+            lastValidValue = input.value;
         });
     }
 };
