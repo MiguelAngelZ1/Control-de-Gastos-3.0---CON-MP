@@ -1,10 +1,10 @@
 /**
  * ====================================
- * INVOICE-PARSER.JS - Motor de Análisis v3.0
+ * INVOICE-PARSER.JS - Motor de Análisis v3.1
  * ====================================
  * 
  * Optimizado para facturas de servicios de Argentina.
- * Extrae: Empresa, Titular, Monto, Vencimiento y Código de Barras.
+ * Extrae: Empresa, Titular (Cliente), Monto, Vencimiento y Código de Barras.
  */
 
 const { validateBarcode } = require('./barcode');
@@ -44,7 +44,7 @@ class InvoiceParser {
     normalizeText(text) {
         return text.toLowerCase()
             .replace(/\s+/g, ' ')
-            .replace(/,/g, '.') // Normalizar comas a puntos para búsqueda de patrones
+            .replace(/,/g, '.') 
             .replace(/\.\./g, '.');
     }
 
@@ -54,7 +54,7 @@ class InvoiceParser {
     }
 
     parse() {
-        this.log('Iniciando análisis local optimizado...');
+        this.log('Iniciando análisis local optimizado v3.1...');
         
         this.detectProvider();
         this.extractCustomerName();
@@ -83,36 +83,55 @@ class InvoiceParser {
     }
 
     /**
-     * EXTRACCIÓN DE TITULAR (Mejorado)
+     * EXTRACCIÓN DE TITULAR (CLIENTE) - CORREGIDO
      */
     extractCustomerName() {
-        // Patrones comunes para titulares en facturas
+        this.log('Buscando nombre del titular del servicio...');
+        
+        // Lista de palabras que indican que NO es un nombre de persona (Empresas o términos de factura)
+        const blacklist = [
+            'EDENOR', 'EDESUR', 'METROGAS', 'NATURGY', 'AYSA', 'TELECOM', 'PERSONAL', 'FLOW', 
+            'MOVISTAR', 'TELEFONICA', 'CLARO', 'FIBERTEL', 'TELECENTRO', 'DIRECTV',
+            'S.A.', 'SA', 'INC', 'SRL', 'CUIT', 'CUIL', 'FACTURA', 'LIQUIDACION', 'CONSUMO',
+            'TOTAL', 'PAGO', 'VENCE', 'VENCIMIENTO', 'CLIENTE', 'TITULAR', 'USUARIO',
+            'SUMINISTRO', 'DIRECCION', 'DOMICILIO', 'ESTADO', 'PERIODO', 'MES', 'AÑO'
+        ];
+
+        // Patrones específicos para capturar el nombre después de etiquetas clave
         const namePatterns = [
-            /(?:titular|cliente|usuario|señor\(a\)|sr\/a)[:\s]+([A-ZÁÉÍÓÚÑ\s]{5,30})/i,
-            /domicilio de suministro[:\s]+.*?[\n\r]([A-ZÁÉÍÓÚÑ\s]{5,30})/i
+            /(?:titular|cliente|usuario|señor\(a\)|sr\/a|nombre)[:\s]+([A-ZÁÉÍÓÚÑ\s]{5,40})/i,
+            /domicilio de suministro[:\s]+.*?[\n\r]([A-ZÁÉÍÓÚÑ\s]{5,40})/i,
+            /datos del cliente[:\s]+.*?[\n\r]([A-ZÁÉÍÓÚÑ\s]{5,40})/i
         ];
 
         for (const pattern of namePatterns) {
             const match = this.originalText.match(pattern);
             if (match && match[1]) {
-                const name = match[1].trim();
-                if (name.length > 5 && !/total|pago|vence|cuit|nro/i.test(name)) {
+                let name = match[1].trim().split('\n')[0].trim(); // Solo la primera línea del match
+                
+                // Limpiar si el match capturó demasiado (ej: "JUAN PEREZ CUIT 20...")
+                name = name.split(/(?:CUIT|CUIL|DNI|NRO|N°)/i)[0].trim();
+
+                if (this.isValidPersonName(name, blacklist)) {
                     this.results.customerName = name.toUpperCase();
-                    this.results.confidence.customerName = 85;
-                    this.log(`✓ Titular detectado: ${this.results.customerName}`);
+                    this.results.confidence.customerName = 90;
+                    this.log(`✓ Titular (Cliente) detectado: ${this.results.customerName}`);
                     return;
                 }
             }
         }
 
-        // Fallback: Buscar la primera línea que parezca un nombre (Mayúsculas, 2-3 palabras)
-        for (let i = 0; i < Math.min(this.lines.length, 15); i++) {
+        // Fallback: Buscar en las primeras líneas una estructura de nombre real
+        // Un nombre de persona suele tener 2 a 4 palabras en mayúsculas
+        for (let i = 0; i < Math.min(this.lines.length, 20); i++) {
             const line = this.lines[i].trim();
-            if (/^[A-ZÁÉÍÓÚÑ]{3,}\s[A-ZÁÉÍÓÚÑ]{3,}(\s[A-ZÁÉÍÓÚÑ]{3,})?$/.test(line)) {
-                if (!/factura|liquidación|servicio|pago/i.test(line)) {
+            
+            // Patrón: 2 a 4 palabras de 3+ letras cada una, solo letras y espacios
+            if (/^[A-ZÁÉÍÓÚÑ]{3,}\s[A-ZÁÉÍÓÚÑ]{2,}(\s[A-ZÁÉÍÓÚÑ]{2,})?(\s[A-ZÁÉÍÓÚÑ]{2,})?$/.test(line)) {
+                if (this.isValidPersonName(line, blacklist)) {
                     this.results.customerName = line;
-                    this.results.confidence.customerName = 60;
-                    this.log(`✓ Titular probable (por formato): ${line}`);
+                    this.results.confidence.customerName = 70;
+                    this.log(`✓ Titular probable por formato: ${line}`);
                     return;
                 }
             }
@@ -120,31 +139,51 @@ class InvoiceParser {
     }
 
     /**
-     * EXTRACCIÓN DE MONTO (Máxima Precisión)
+     * Valida si un string parece un nombre de persona real y no una empresa o término técnico
+     */
+    isValidPersonName(name, blacklist) {
+        if (name.length < 5 || name.length > 40) return false;
+        
+        const upperName = name.toUpperCase();
+        
+        // No debe contener números
+        if (/\d/.test(name)) return false;
+        
+        // No debe estar en la blacklist
+        for (const word of blacklist) {
+            if (upperName.includes(word)) return false;
+        }
+        
+        // Debe tener al menos un espacio (Nombre y Apellido)
+        if (!name.includes(' ')) return false;
+
+        return true;
+    }
+
+    /**
+     * EXTRACCIÓN DE MONTO
      */
     extractAmount() {
-        const amountRegex = /\$?\s?(\d{1,3}(?:\.\d{3})*(?:,\d{2}))/g;
         const candidates = [];
         let match;
 
-        // Buscar montos con contexto
-        const textForAmount = this.originalText.replace(/\./g, ''); // Quitar puntos de miles
+        // Quitar puntos de miles para facilitar regex
+        const textForAmount = this.originalText.replace(/(\d)\.(\d{3})/g, '$1$2'); 
         const contextRegex = /(?:total|pagar|importe|monto|deuda|saldo|vencimiento)[:\s]*\$?\s*(\d+,\d{2})/gi;
         
         while ((match = contextRegex.exec(textForAmount)) !== null) {
             const val = parseFloat(match[1].replace(',', '.'));
             if (val > 10) {
-                candidates.push({ val, weight: 100, context: match[0] });
+                candidates.push({ val, weight: 100 });
             }
         }
 
         if (candidates.length > 0) {
-            candidates.sort((a, b) => b.val - a.val); // El mayor suele ser el total
+            candidates.sort((a, b) => b.val - a.val);
             this.results.amount = candidates[0].val;
             this.results.confidence.amount = 95;
-            this.log(`✓ Monto detectado (contexto): $${this.results.amount}`);
+            this.log(`✓ Monto detectado: $${this.results.amount}`);
         } else {
-            // Búsqueda genérica si falla el contexto
             const genericMatches = this.originalText.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g) || [];
             const genericVals = genericMatches.map(m => parseFloat(m.replace(/\./g, '').replace(',', '.'))).filter(v => v > 100);
             if (genericVals.length > 0) {
@@ -171,7 +210,7 @@ class InvoiceParser {
 
             if (day <= 31 && month <= 12 && year >= 2024) {
                 const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                const context = this.originalText.substring(Math.max(0, match.index - 30), match.index).toLowerCase();
+                const context = this.originalText.substring(Math.max(0, match.index - 40), match.index).toLowerCase();
                 
                 let weight = 50;
                 if (context.includes('vencimiento') || context.includes('vto') || context.includes('vence')) weight = 100;
