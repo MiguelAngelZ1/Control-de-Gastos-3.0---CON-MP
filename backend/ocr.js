@@ -1,7 +1,10 @@
 /**
  * ====================================
- * OCR.JS - Motor de OCR Optimizado v3.0
+ * OCR.JS - Motor de Extracción de Texto
  * ====================================
+ * Gestiona el procesamiento de imágenes (Jimp) y la ejecución 
+ * de OCR (Tesseract.js) o extracción digital para PDFs.
+ * Prepara el texto para que luego sea analizado por la IA.
  */
 
 const Tesseract = require('tesseract.js');

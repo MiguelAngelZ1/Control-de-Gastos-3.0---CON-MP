@@ -185,8 +185,16 @@ const Storage = {
      * @returns {boolean} Éxito de la operación
      */
     deleteFixedExpense(id) {
-        const expenses = this.getFixedExpenses().filter(e => e.id !== id);
-        return this.save(CONSTANTS.STORAGE_KEYS.FIXED_EXPENSES, expenses);
+        const expenses = this.getFixedExpenses();
+        const expenseToDelete = expenses.find(e => e.id === id);
+        
+        // Si tiene comprobante, eliminarlo también
+        if (expenseToDelete && expenseToDelete.receipt) {
+            this.deleteReceipt(expenseToDelete.receipt.id);
+        }
+
+        const filtered = expenses.filter(e => e.id !== id);
+        return this.save(CONSTANTS.STORAGE_KEYS.FIXED_EXPENSES, filtered);
     },
 
     /**

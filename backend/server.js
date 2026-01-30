@@ -1,13 +1,12 @@
 /**
  * ====================================
- * SERVER.JS - Servidor Express
- * Invoice OCR Processor v3.0
+ * SERVER.JS - Servidor Principal (Backend)
  * ====================================
- * 
- * ACTUALIZACIÓN:
- * Se ha eliminado la dependencia de Gemini AI.
- * Ahora utiliza exclusivamente el motor de análisis local
- * optimizado para facturas de servicios.
+ * Este es el corazón del sistema. Se encarga de:
+ * 1. Servir los archivos estáticos del frontend.
+ * 2. Gestionar la subida de facturas (Multer).
+ * 3. Orquestar el proceso de OCR e Inteligencia Artificial (Groq).
+ * 4. Fusionar los resultados para devolver datos estructurados al usuario.
  */
 
 const express = require('express');
@@ -15,10 +14,12 @@ const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config();
 
 // Importar módulos locales
 const { processFile } = require('./ocr');
 const { parseInvoice } = require('./invoice-parser');
+const { analyzeInvoiceWithGroq } = require('./groq-ai');
 
 // Configuración
 const PORT = process.env.PORT || 3000;
@@ -35,7 +36,7 @@ const app = express();
 // Middlewares
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // Configuración de Multer
 const storage = multer.diskStorage({
@@ -65,8 +66,8 @@ const upload = multer({
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
-        version: '3.0.0',
-        parser: 'local-optimized',
+        version: '4.0.0',
+        parser: 'hybrid-groq',
         timestamp: new Date().toISOString()
     });
 });
@@ -78,7 +79,7 @@ app.get('/api/health', (req, res) => {
 app.post('/api/invoice/upload', upload.single('invoice'), async (req, res) => {
     console.log('\n');
     console.log('█'.repeat(70));
-    console.log('█  PROCESAMIENTO DE FACTURA v3.0 - Motor Local Optimizado');
+    console.log('█  PROCESAMIENTO DE FACTURA v4.0 - Groq AI + Motor Local');
     console.log('█'.repeat(70));
     
     const startTime = Date.now();
@@ -94,16 +95,11 @@ app.post('/api/invoice/upload', upload.single('invoice'), async (req, res) => {
         const { path: filePath, mimetype, size, originalname } = req.file;
         
         console.log(`\n📎 Archivo: ${originalname}`);
-        console.log(`   Tipo: ${mimetype}`);
-        console.log(`   Tamaño: ${(size / 1024).toFixed(2)} KB`);
         
         // ==========================================
         // PASO 1: OCR (Extracción de texto)
         // ==========================================
-        console.log('\n' + '─'.repeat(50));
-        console.log('📋 PASO 1: Extracción de texto (OCR)');
-        console.log('─'.repeat(50));
-        
+        console.log('\n📋 PASO 1: Extracción de texto');
         const ocrResult = await processFile(filePath, mimetype);
         
         if (!ocrResult.success) {
@@ -115,99 +111,81 @@ app.post('/api/invoice/upload', upload.single('invoice'), async (req, res) => {
             });
         }
         
-        console.log(`\n   ✓ Texto extraído: ${ocrResult.text.length} caracteres`);
-        console.log(`   ✓ Confianza OCR: ${ocrResult.confidence}%`);
-        
         // ==========================================
-        // PASO 2: ANÁLISIS LOCAL OPTIMIZADO
+        // PASO 2: ANÁLISIS INTELIGENTE (GROQ AI + LOCAL)
         // ==========================================
-        console.log('\n' + '─'.repeat(50));
-        console.log('📋 PASO 2: Análisis inteligente (Motor Local)');
-        console.log('─'.repeat(50));
+        console.log('\n📋 PASO 2: Análisis inteligente');
         
-        const parseResult = parseInvoice(ocrResult.text);
+        const localResults = parseInvoice(ocrResult.text);
+        const groqResults = await analyzeInvoiceWithGroq(ocrResult.text);
         
+        // FUSIÓN INTELIGENTE v4.2 - PRIORIDAD IA
+        // Groq es el "cerebro primario". El motor local es el "respaldo".
+        
+        const merged = {
+            provider: groqResults?.provider || localResults.provider?.name || localResults.provider,
+            customerName: groqResults?.customerName || localResults.customerName,
+            amount: groqResults?.amount || localResults.amount,
+            dueDate: groqResults?.dueDate || localResults.dueDate,
+            barcode: groqResults?.barcode || localResults.barcode
+        };
+
+        // Si Groq falló completamente, marcamos el origen como local
+        const source = groqResults ? 'groq-ai' : 'local-hybrid';
+
         // Limpiar archivo temporal
         try {
             if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         } catch (e) {}
         
-        // ==========================================
-        // PREPARAR RESPUESTA
-        // ==========================================
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
         
         const response = {
             success: true,
             processingTime: `${duration}s`,
-            source: 'local',
+            source: source,
             
-            // Datos principales extraídos
             extracted: {
-                amount: parseResult.amount,
-                amountFormatted: parseResult.amount 
-                    ? `$${parseResult.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+                amount: merged.amount,
+                amountFormatted: merged.amount 
+                    ? `$${Number(merged.amount).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
                     : null,
-                amountConfidence: parseResult.confidence?.amount || 0,
+                amountConfidence: groqResults?.amount ? 99 : (localResults.confidence?.amount || 0),
                 
-                dueDate: parseResult.dueDate,
-                dueDateFormatted: parseResult.dueDateFormatted || parseResult.dueDate,
-                dueDateConfidence: parseResult.confidence?.date || 0,
+                dueDate: merged.dueDate,
+                dueDateFormatted: merged.dueDate ? merged.dueDate.split('-').reverse().join('/') : null,
+                dueDateConfidence: groqResults?.dueDate ? 99 : (localResults.confidence?.date || 0),
                 
-                barcode: parseResult.barcode,
-                barcodeLength: parseResult.barcode ? parseResult.barcode.length : 0,
-                barcodeConfidence: parseResult.confidence?.barcode || 0,
+                barcode: merged.barcode,
+                barcodeConfidence: groqResults?.barcode ? 99 : (localResults.confidence?.barcode || 0),
                 
-                provider: parseResult.provider,
+                provider: typeof merged.provider === 'string' ? { name: merged.provider } : merged.provider,
                 
-                customerName: parseResult.customerName || null,
-                customerNameConfidence: parseResult.confidence?.customerName || 0
+                customerName: merged.customerName || null,
+                customerNameConfidence: groqResults?.customerName ? 99 : (localResults.confidence?.customerName || 0)
             },
             
-            // Alternativas para selección manual si el usuario lo requiere
-            alternatives: parseResult.alternatives,
-            
-            // Metadatos
             meta: {
                 ocrConfidence: ocrResult.confidence,
-                textLength: ocrResult.text.length,
-                parserVersion: '3.0-local',
-                provider: parseResult.provider?.name || null
+                parserVersion: '4.1-hybrid'
             },
             
-            // Debug info
-            debug: parseResult.debug,
-            
-            // Texto completo para referencia
             rawText: ocrResult.text
         };
         
-        // Log final en consola
-        console.log('\n' + '═'.repeat(70));
-        console.log('✅ PROCESAMIENTO COMPLETADO');
-        console.log('═'.repeat(70));
-        console.log(`   ⏱️  Tiempo: ${duration}s`);
+        // Log final
+        console.log('\n' + '✅ PROCESAMIENTO COMPLETADO');
         console.log(`   🏢 Empresa: ${response.extracted.provider?.name || 'No identificado'}`);
-        console.log(`   👤 Titular: ${response.extracted.customerName || 'No detectado'}`);
-        console.log(`   💵 Monto: ${response.extracted.amountFormatted || '❌ No detectado'}`);
-        console.log(`   📅 Vencimiento: ${response.extracted.dueDateFormatted || '❌ No detectada'}`);
-        console.log(`   🔢 Código: ${response.extracted.barcode ? '✓ Detectado' : '❌ No detectado'}`);
-        console.log('═'.repeat(70) + '\n');
+        console.log(`   📅 Vencimiento: ${response.extracted.dueDateFormatted || '❌'}`);
+        console.log(`   💵 Monto: ${response.extracted.amountFormatted || '❌'}`);
+        console.log(`   🧠 Origen: ${response.source}`);
         
         res.json(response);
         
     } catch (error) {
         console.error('\n❌ ERROR:', error);
-        
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
-        
-        res.status(500).json({
-            success: false,
-            error: 'Error interno del servidor',
-            details: error.message
-        });
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(500).json({ success: false, error: 'Error interno del servidor', details: error.message });
     }
 });
 
@@ -215,7 +193,7 @@ app.post('/api/invoice/upload', upload.single('invoice'), async (req, res) => {
  * Servir frontend
  */
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'index.html'));
+    res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
 });
 
 // Manejo de errores global
@@ -239,8 +217,8 @@ app.use((error, req, res, next) => {
 app.listen(PORT, () => {
     console.log('\n');
     console.log('╔' + '═'.repeat(68) + '╗');
-    console.log('║  📄 INVOICE OCR PROCESSOR v3.0 - EXCLUSIVO LOCAL                   ║');
-    console.log('║  🧠 Motor de Análisis por Reglas y Contexto                        ║');
+    console.log('║  📄 INVOICE OCR PROCESSOR v4.0 - GROQ AI INTEGRADO                ║');
+    console.log('║  🧠 Motor Híbrido: Llama 3.3 + Análisis Local Argentino            ║');
     console.log('╠' + '═'.repeat(68) + '╣');
     console.log(`║  🚀 Servidor: http://localhost:${PORT}                                  ║`);
     console.log('╚' + '═'.repeat(68) + '╝');

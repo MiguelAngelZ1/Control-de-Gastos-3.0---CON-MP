@@ -631,12 +631,25 @@ input, textarea, select {
     flex-wrap: wrap;
     justify-content: flex-end;
 }
-
 /* ========== GASTOS FIJOS - DISEÑO MEJORADO ========== */
 .fixed-items .list-item {
     flex-wrap: wrap;
     gap: var(--space-3);
     padding: var(--space-4);
+}
+
+/* Estilos para servicios sin factura */
+.no-invoice-badge {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--border-color);
 }
 
 .fixed-items .item-content {

@@ -345,54 +345,47 @@ const Utils = {
             
             // Formatear al escribir
             newInput.addEventListener('input', function(e) {
-                let value = e.target.value;
+                let cursorPosition = e.target.selectionStart;
+                let originalValue = e.target.value;
                 
-                // Si está vacío, permitir
-                if (!value) return;
+                // Limpiar valor: solo dejar dígitos y una coma
+                let cleanValue = originalValue.replace(/\./g, ''); 
                 
-                // Reemplazar coma por punto para decimales
-                value = value.replace(',', '.');
+                if (!cleanValue) return;
                 
-                // Remover todo excepto dígitos y un punto
-                let cleanValue = '';
-                let hasDecimal = false;
+                // Dividir en parte entera y decimal
+                const parts = cleanValue.split(',');
+                let integerPart = parts[0].replace(/\D/g, ''); 
+                let decimalPart = parts.length > 1 ? parts[1].replace(/\D/g, '').substring(0, 2) : null;
                 
-                for (let char of value) {
-                    if (char >= '0' && char <= '9') {
-                        cleanValue += char;
-                    } else if (char === '.' && !hasDecimal) {
-                        cleanValue += char;
-                        hasDecimal = true;
-                    }
-                }
+                // Si el número es muy largo, simplemente lo dejamos ser (sin límites)
+                // Formatear con puntos de miles
+                const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
                 
-                // Si tiene punto decimal
-                if (cleanValue.includes('.')) {
-                    const parts = cleanValue.split('.');
-                    const integerPart = parts[0] || '0';
-                    const decimalPart = parts[1] ? parts[1].substring(0, 2) : '';
-                    
-                    // Formatear parte entera con puntos de miles
-                    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-                    
-                    // Usar COMA para decimal (formato argentino)
-                    e.target.value = formattedInteger + ',' + decimalPart;
-                } else {
-                    // Solo parte entera, formatear con puntos de miles
-                    e.target.value = cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                let finalValue = formattedInteger;
+                if (decimalPart !== null) finalValue += ',' + decimalPart;
+                
+                if (e.target.value !== finalValue) {
+                    const diff = finalValue.length - originalValue.length;
+                    e.target.value = finalValue;
+                    e.target.setSelectionRange(cursorPosition + diff, cursorPosition + diff);
                 }
             });
             
-            // Permitir tecla coma para decimales
+            // Permitir solo teclas válidas
             newInput.addEventListener('keydown', function(e) {
-                // Permitir coma como separador decimal
-                if (e.key === ',' || e.key === '.') {
-                    const value = e.target.value;
-                    // Si ya tiene coma, no permitir otra
-                    if (value.includes(',')) {
-                        e.preventDefault();
-                    }
+                const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Home', 'End'];
+                if (allowedKeys.includes(e.key)) return;
+                
+                // Permitir coma solo si no hay una ya
+                if ((e.key === ',' || e.key === '.') && !e.target.value.includes(',')) {
+                    return;
                 }
+                
+                // Permitir números
+                if (/[0-9]/.test(e.key)) return;
+                
+                e.preventDefault();
             });
         });
     }

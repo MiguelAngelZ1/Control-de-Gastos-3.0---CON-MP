@@ -1,28 +1,36 @@
 /**
  * ====================================
- * INVOICE-PARSER.JS - Motor de Análisis v3.2 (ULTRA-ROBUSTO)
+ * INVOICE-PARSER.JS - Motor de Reglas Local
  * ====================================
+ * Este módulo contiene la lógica de análisis basada en expresiones 
+ * regulares y pesos contextuales exclusiva para facturas argentinas.
+ * Sirve como respaldo robusto si la IA no está disponible y para 
+ * validar datos técnicos como códigos de barras.
  * 
- * Optimizado para facturas de servicios de Argentina.
- * Extrae: Empresa, Titular (Cliente), Monto, Vencimiento y Código de Barras.
+ * Optimizado para facturas de servicios de Argentina:
+ * Extrae: Empresa, Titular, Monto, Vencimiento y Código de Barras.
  */
 
 const { validateBarcode } = require('./barcode');
 
-// Configuración de proveedores conocidos con patrones expandidos
 const PROVIDERS = {
-    edenor: { name: 'Edenor', patterns: ['edenor', 'empresa distribuidora norte'], type: 'electricity' },
-    edesur: { name: 'Edesur', patterns: ['edesur', 'empresa distribuidora sur'], type: 'electricity' },
+    // Servicios básicos de Argentina y solicitados por el usuario
+    camuzzi: { name: 'Camuzzi', patterns: ['camuzzi', 'gas pampeana', 'gas del sur'], type: 'gas' },
+    scpl: { name: 'SCPL', patterns: ['scpl', 'sociedad cooperativa popular limitada'], type: 'service' },
     metrogas: { name: 'Metrogas', patterns: ['metrogas'], type: 'gas' },
     naturgy: { name: 'Naturgy', patterns: ['naturgy', 'gas natural ban'], type: 'gas' },
-    aysa: { name: 'AySA', patterns: ['aysa', 'agua y saneamientos argentinos'], type: 'water' },
-    telecom: { name: 'Telecom', patterns: ['telecom', 'personal', 'flow'], type: 'telecom' },
+    telecom: { name: 'Telecom / Personal', patterns: ['telecom', 'personal', 'flow'], type: 'telecom' },
     movistar: { name: 'Movistar', patterns: ['movistar', 'telefónica', 'telefonica'], type: 'telecom' },
     claro: { name: 'Claro', patterns: ['claro', 'amx argentina'], type: 'telecom' },
-    fibertel: { name: 'Fibertel', patterns: ['fibertel', 'cablevision'], type: 'internet' },
+    aysa: { name: 'AySA', patterns: ['aysa', 'agua y saneamientos argentinos'], type: 'water' },
+    edenor: { name: 'Edenor', patterns: ['edenor', 'empresa distribuidora norte'], type: 'electricity' },
+    edesur: { name: 'Edesur', patterns: ['edesur', 'empresa distribuidora sur'], type: 'electricity' },
     telecentro: { name: 'Telecentro', patterns: ['telecentro'], type: 'internet' },
+    fibertel: { name: 'Fibertel', patterns: ['fibertel', 'cablevision'], type: 'internet' },
     directv: { name: 'DirecTV', patterns: ['directv'], type: 'cable' },
-    // Agregamos detección por CUITs comunes si es necesario
+    osde: { name: 'OSDE', patterns: ['osde'], type: 'health' },
+    swiss_medical: { name: 'Swiss Medical', patterns: ['swiss medical'], type: 'health' },
+    galeno: { name: 'Galeno', patterns: ['galeno'], type: 'health' }
 };
 
 class InvoiceParser {
@@ -109,13 +117,15 @@ class InvoiceParser {
             'S.A.', 'SA', 'INC', 'SRL', 'CUIT', 'CUIL', 'FACTURA', 'LIQUIDACION', 'CONSUMO',
             'TOTAL', 'PAGO', 'VENCE', 'VENCIMIENTO', 'CLIENTE', 'TITULAR', 'USUARIO',
             'SUMINISTRO', 'DIRECCION', 'DOMICILIO', 'ESTADO', 'PERIODO', 'MES', 'AÑO',
-            'FECHA', 'EMISION', 'NUMERO', 'NRO', 'CALLE', 'PROVINCIA', 'LOCALIDAD'
+            'FECHA', 'EMISION', 'NUMERO', 'NRO', 'CALLE', 'PROVINCIA', 'LOCALIDAD', 'RESPONSABLE',
+            'INSCRIPTO', 'MONOTRIBUTO', 'EXENTO', 'IVA'
         ];
 
         // 1. Buscar por etiquetas explícitas
         const namePatterns = [
-            /(?:titular|cliente|usuario|señor\(a\)|sr\/a|nombre|pagador)[:\s]+([A-ZÁÉÍÓÚÑ\s]{5,45})/i,
-            /(?:datos del cliente|datos del titular)[:\s]*[\n\r]+([A-ZÁÉÍÓÚÑ\s]{5,45})/i
+            /(?:titular|cliente|usuario|señor\(a\)|sr\/a|nombre|pagador|apellido y nombre)[:\s]+([A-ZÁÉÍÓÚÑ\s]{5,45})/i,
+            /(?:datos del cliente|datos del titular|destinatario)[:\s]*[\n\r]+([A-ZÁÉÍÓÚÑ\s]{5,45})/i,
+            /([A-ZÁÉÍÓÚÑ\s]{5,45})[\n\r]+(?:cuit|cuil|dni)[:\s]*\d+/i
         ];
 
         for (const pattern of namePatterns) {
@@ -191,7 +201,7 @@ class InvoiceParser {
         const cleanText = this.originalText.replace(/(\d)\.(\d{3})/g, '$1$2');
         
         // Patrones con contexto de alta prioridad
-        const highPriorityRegex = /(?:total a pagar|total factura|importe total|monto total|total vencimiento|total liquidación|total liquidacion|pagar)[:\s]*\$?\s*(\d+[\.,]\d{2})/gi;
+        const highPriorityRegex = /(?:total a pagar|total factura|importe total|monto total|total vencimiento|total liquidación|total liquidacion|pagar|saldo total|monto a pagar|importe neto)[:\s]*\$?\s*(\d+[\.,]\d{2})/gi;
         let match;
         while ((match = highPriorityRegex.exec(cleanText)) !== null) {
             const val = parseFloat(match[1].replace(',', '.'));
@@ -199,7 +209,7 @@ class InvoiceParser {
         }
 
         // Patrones de prioridad media
-        const midPriorityRegex = /(?:total|importe|monto|saldo)[:\s]*\$?\s*(\d+[\.,]\d{2})/gi;
+        const midPriorityRegex = /(?:total|importe|monto|saldo|vencimiento)[:\s]*\$?\s*(\d+[\.,]\d{2})/gi;
         while ((match = midPriorityRegex.exec(cleanText)) !== null) {
             const val = parseFloat(match[1].replace(',', '.'));
             if (val > 10) candidates.push({ val, weight: 70 });
@@ -246,7 +256,9 @@ class InvoiceParser {
                 const context = this.originalText.substring(Math.max(0, match.index - 50), match.index).toLowerCase();
                 
                 let weight = 50;
-                if (context.includes('vencimiento') || context.includes('vto') || context.includes('vence') || context.includes('vto.')) weight = 100;
+                if (context.includes('pago hasta') || context.includes('hasta cuando')) weight = 150;
+                else if (context.includes('vencimiento') || context.includes('vto') || context.includes('vence') || context.includes('vto.')) weight = 100;
+                
                 if (context.includes('emisión') || context.includes('emision') || context.includes('fecha de factura')) weight = 20;
                 if (context.includes('próximo') || context.includes('proximo')) weight = 80;
 

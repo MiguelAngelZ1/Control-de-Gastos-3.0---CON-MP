@@ -60,6 +60,23 @@ const FixedModule = {
         if (saved) {
             UI.showToast('Gasto fijo agregado', 'success');
             form.reset();
+            
+            // Preguntar si tiene factura
+            setTimeout(() => {
+                UI.showConfirm('¿Este servicio tiene factura?', () => {
+                    // SI tiene factura (es el comportamiento por defecto)
+                    Storage.updateFixedExpense(saved.id, { hasInvoice: true });
+                    this.render();
+                }, () => {
+                    // NO tiene factura
+                    Storage.updateFixedExpense(saved.id, { 
+                        hasInvoice: false,
+                        status: CONSTANTS.EXPENSE_STATUS.PENDING 
+                    });
+                    this.render();
+                });
+            }, 500);
+
             this.render();
             
             // Actualizar dashboard y presupuestos semanales
@@ -589,6 +606,10 @@ const FixedModule = {
             btn.addEventListener('click', () => this.openInvoiceModal(btn.dataset.id));
         });
 
+        container.querySelectorAll('.btn-pay-no-invoice').forEach(btn => {
+            btn.addEventListener('click', () => this.markAsPaid(btn.dataset.id));
+        });
+
         container.querySelectorAll('.btn-pay').forEach(btn => {
             btn.addEventListener('click', () => this.initiatePayment(btn.dataset.id));
         });
@@ -621,6 +642,7 @@ const FixedModule = {
         const isPaid = expense.status === CONSTANTS.EXPENSE_STATUS.PAID;
         const isPending = expense.status === CONSTANTS.EXPENSE_STATUS.PENDING;
         const isLoaded = expense.status === CONSTANTS.EXPENSE_STATUS.INVOICE_LOADED;
+        const hasInvoice = expense.hasInvoice !== false; // Default true
 
         return `
             <div class="list-item fixed-item ${isPaid ? 'paid' : ''}" data-id="${expense.id}">
@@ -636,6 +658,7 @@ const FixedModule = {
                             ${statusLabel}
                         </span>
                         ${expense.dueDate ? `<span class="due-date"><i class="bi bi-calendar-event"></i> Vence: ${Utils.formatDate(expense.dueDate)}</span>` : ''}
+                        ${!hasInvoice ? `<span class="no-invoice-badge"><i class="bi bi-file-earmark-x"></i> Sin factura</span>` : ''}
                     </div>
                 </div>
                 
@@ -644,10 +667,17 @@ const FixedModule = {
                 </div>
                 
                 <div class="item-actions">
-                    ${isPending ? `
+                    ${isPending && hasInvoice ? `
                         <button class="action-btn action-btn-upload btn-upload-invoice" data-id="${expense.id}">
                             <i class="bi bi-file-earmark-plus"></i>
                             <span>Cargar factura</span>
+                        </button>
+                    ` : ''}
+
+                    ${isPending && !hasInvoice ? `
+                        <button class="action-btn action-btn-pay btn-pay-no-invoice" data-id="${expense.id}">
+                            <i class="bi bi-credit-card"></i>
+                            <span>Pagar</span>
                         </button>
                     ` : ''}
                     
