@@ -170,12 +170,14 @@ input, textarea, select {
     left: -100%;
     width: var(--sidebar-width);
     height: 100vh;
+    height: 100dvh;
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
     z-index: var(--z-sidebar);
     transition: left var(--transition-normal);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .sidebar.active {
@@ -248,7 +250,9 @@ input, textarea, select {
 
 .sidebar-footer {
     padding: var(--space-4);
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .sidebar-version {

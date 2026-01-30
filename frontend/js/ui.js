@@ -122,8 +122,8 @@ const UI = {
      */
     updatePageTitle(tabId) {
         const titles = {
-            dashboard: { text: 'Dashboard', icon: 'bi-speedometer2' },
-            incomes: { text: 'Ingresos', icon: 'bi-arrow-down-circle' },
+            dashboard: { text: 'Dashboard', icon: 'bi-grid-1x2' },
+            incomes: { text: 'Ingresos', icon: 'bi-cash-stack' },
             weekly: { text: 'Gastos Semanales', icon: 'bi-calendar-week' },
             fixed: { text: 'Gastos Fijos', icon: 'bi-house' },
             receipts: { text: 'Comprobantes', icon: 'bi-receipt' },
@@ -132,7 +132,7 @@ const UI = {
         
         const pageTitle = document.getElementById('page-title');
         if (pageTitle) {
-            const titleData = titles[tabId] || { text: 'Control de Gastos', icon: 'bi-speedometer2' };
+            const titleData = titles[tabId] || { text: 'Control de Gastos', icon: 'bi-grid-1x2' };
             pageTitle.innerHTML = `<i class="bi ${titleData.icon}"></i> ${titleData.text}`;
         }
     },
