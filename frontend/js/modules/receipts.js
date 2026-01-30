@@ -332,19 +332,16 @@ const ReceiptsModule = {
         }, 100);
     },
 
-    /**
-     * Maneja la eliminación desde el visor con confirmación
-     */
-    handleDeleteFromViewer(receipt) {
+    async handleDeleteFromViewer(receipt) {
         // Cerrar el visor primero para que el modal de confirmación se vea bien
         UI.closeModal('view-receipt-modal');
         
         // Pequeño delay para que se cierre el visor antes de mostrar confirmación
-        setTimeout(() => {
-            UI.showConfirm('¿Eliminar este comprobante?', () => {
-                this.deleteReceiptInternal(receipt);
-            });
-        }, 200);
+        await Utils.delay(200);
+        const confirm = await UI.showConfirm('¿Eliminar este comprobante?');
+        if (confirm) {
+            this.deleteReceiptInternal(receipt);
+        }
     },
 
     /**
@@ -484,13 +481,14 @@ const ReceiptsModule = {
 
         // Eventos de eliminar
         container.querySelectorAll('.btn-delete').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const id = btn.dataset.id;
                 const receipt = receipts.find(r => r.id === id);
                 if (receipt) {
-                    UI.showConfirm('¿Eliminar este comprobante?', () => {
+                    const confirm = await UI.showConfirm('¿Eliminar este comprobante?');
+                    if (confirm) {
                         this.deleteReceiptInternal(receipt);
-                    });
+                    }
                 }
             });
         });

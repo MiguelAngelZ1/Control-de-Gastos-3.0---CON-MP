@@ -74,23 +74,24 @@ const IncomesModule = {
      * Elimina un ingreso
      * @param {string} id - ID del ingreso
      */
-    delete(id) {
-        UI.showConfirm(CONSTANTS.MESSAGES.CONFIRM_DELETE_INCOME, () => {
-            const deleted = Storage.deleteIncome(id);
+    async delete(id) {
+        const confirm = await UI.showConfirm(CONSTANTS.MESSAGES.CONFIRM_DELETE_INCOME);
+        if (!confirm) return;
+
+        const deleted = Storage.deleteIncome(id);
+        
+        if (deleted) {
+            UI.showToast('Ingreso eliminado', 'success');
+            this.render();
             
-            if (deleted) {
-                UI.showToast('Ingreso eliminado', 'success');
-                this.render();
-                
-                // Actualizar dashboard y gastos semanales
-                if (typeof App !== 'undefined') {
-                    App.updateDashboard();
-                    WeeklyModule.updateBudgets();
-                }
-            } else {
-                UI.showToast(CONSTANTS.MESSAGES.ERROR_GENERIC, 'error');
+            // Actualizar dashboard y gastos semanales
+            if (typeof App !== 'undefined') {
+                App.updateDashboard();
+                WeeklyModule.updateBudgets();
             }
-        });
+        } else {
+            UI.showToast(CONSTANTS.MESSAGES.ERROR_GENERIC, 'error');
+        }
     },
 
     /**

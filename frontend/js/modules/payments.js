@@ -191,25 +191,9 @@ const PaymentsModule = {
         UI.openModal('payment-simulation-modal');
     },
 
-    /**
-     * Crea una preferencia de pago en Mercado Pago
-     * NOTA: En producción, esto debería llamar a un endpoint del backend
-     * @param {object} paymentData - Datos de pago
-     * @returns {Promise<object>} Preferencia de pago
-     */
     async createMercadoPagoPreference(paymentData) {
-        // Esta función está preparada para integración con backend real
-        // El backend debería:
-        // 1. Recibir los datos de pago
-        // 2. Crear una preferencia en Mercado Pago usando el SDK
-        // 3. Retornar el init_point para redirección
-
-        const response = await fetch('/api/payments/create-preference', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
+        try {
+            const data = await API.createPaymentPreference({
                 amount: paymentData.amount,
                 description: paymentData.description,
                 external_reference: paymentData.reference,
@@ -218,14 +202,13 @@ const PaymentsModule = {
                     pending: `${window.location.origin}?payment_status=pending&expense_id=${paymentData.expenseId}`,
                     failure: `${window.location.origin}?payment_status=error&expense_id=${paymentData.expenseId}`
                 }
-            })
-        });
+            });
 
-        if (!response.ok) {
-            throw new Error('Failed to create payment preference');
+            return data;
+        } catch (error) {
+            console.error('Error al generar la preferencia:', error);
+            throw new Error('No se pudo establecer conexión con Mercado Pago. Intente nuevamente.');
         }
-
-        return response.json();
     },
 
     /**

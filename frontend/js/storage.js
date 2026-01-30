@@ -367,39 +367,46 @@ const Storage = {
      * Obtiene el resumen financiero del mes
      * @returns {object} Resumen completo
      */
-    getFinancialSummary() {
-        const totalIncomes = this.getTotalIncomes();
-        const totalFixed = this.getTotalFixedExpenses();
-        const totalFixedPaid = this.getTotalPaidFixedExpenses();
-        const totalWeekly = this.getTotalWeeklyExpenses();
-        const availableBudget = this.getAvailableBudget();
-        const weeklyBudget = this.getWeeklyBudget();
+    getFinancialSummary(customMonthKey = null) {
+        const { key } = Utils.getCurrentMonthYear();
+        const activeMonthKey = customMonthKey || key;
+
+        // Filtrar datos por el mes activo
+        const incomes = this.getIncomes().filter(i => i.monthKey === activeMonthKey);
+        const fixedExpenses = this.getFixedExpenses().filter(e => e.monthKey === activeMonthKey);
+        const weeklyExpenses = this.getWeeklyExpenses().filter(e => e.monthKey === activeMonthKey);
+
+        const totalIncomes = incomes.reduce((sum, i) => sum + Utils.parseNumber(i.amount), 0);
+        const totalFixed = fixedExpenses.reduce((sum, e) => sum + Utils.parseNumber(e.amount), 0);
+        const totalFixedPaid = fixedExpenses.filter(e => e.status === CONSTANTS.EXPENSE_STATUS.PAID)
+            .reduce((sum, e) => sum + Utils.parseNumber(e.amount), 0);
+        const totalWeekly = weeklyExpenses.reduce((sum, e) => sum + Utils.parseNumber(e.amount), 0);
+        
         const weeks = Utils.getWeeksOfMonth();
         const currentWeek = Utils.getCurrentWeekOfMonth();
+        const availableBudget = totalIncomes - totalFixed;
+        const weeklyBudget = weeks.length > 0 ? availableBudget / weeks.length : 0;
 
-        // Calcular excedentes/déficits por semana
         const weeklyData = weeks.map(week => {
-            const spent = this.getTotalByWeek(week.number);
-            const available = weeklyBudget - spent;
+            const spent = weeklyExpenses.filter(e => e.week === week.number)
+                .reduce((sum, e) => sum + Utils.parseNumber(e.amount), 0);
             return {
                 ...week,
                 budget: weeklyBudget,
                 spent,
-                available,
+                available: weeklyBudget - spent,
                 isOver: spent > weeklyBudget,
-                isCurrent: week.number === currentWeek
+                isCurrent: week.number === currentWeek && activeMonthKey === key
             };
         });
 
-        // Calcular redistribución si hay excedentes
+        // Calcular presupuesto ajustado para la semana actual
         let carryOver = 0;
         weeklyData.forEach((week, index) => {
-            if (index < currentWeek - 1) {
-                carryOver += week.available;
-            }
+            if (index < currentWeek - 1) carryOver += week.available;
         });
-
-        const adjustedWeeklyBudget = weeklyBudget + (carryOver / (weeks.length - currentWeek + 1));
+        const remainingWeeks = (weeks.length - currentWeek + 1);
+        const adjustedWeeklyBudget = remainingWeeks > 0 ? weeklyBudget + (carryOver / remainingWeeks) : weeklyBudget;
 
         return {
             totalIncomes,
@@ -414,8 +421,92 @@ const Storage = {
             currentWeek,
             totalSpent: totalFixedPaid + totalWeekly,
             balance: totalIncomes - totalFixedPaid - totalWeekly,
-            monthKey: Utils.getCurrentMonthYear().key
+            monthKey: activeMonthKey
         };
+    },
+
+    resetForNewMonth() {
+        const currentKey = Utils.getCurrentMonthYear().key;
+        const nextMonth = Utils.getNextMonthYear();
+
+        // Limpiar ingresos y semanales del mes actual (los de otros meses se quedan)
+        this.save(CONSTANTS.STORAGE_KEYS.INCOMES, this.getIncomes().filter(i => i.monthKey !== currentKey));
+        this.save(CONSTANTS.STORAGE_KEYS.WEEKLY_EXPENSES, this.getWeeklyExpenses().filter(e => e.monthKey !== currentKey));
+
+        // Resetear fijos para el próximo mes
+        const currentFixed = this.getFixedExpenses();
+        const otherMonthFixed = currentFixed.filter(e => e.monthKey !== currentKey);
+        const resetFixed = currentFixed
+            .filter(e => e.monthKey === currentKey)
+            .map(e => ({
+                id: Utils.generateId(),
+                name: e.name,
+                category: e.category,
+                amount: "0",
+                status: CONSTANTS.EXPENSE_STATUS.PENDING,
+                dueDate: null,
+                invoice: null,
+                invoiceData: null,
+                receipt: null,
+                monthKey: nextMonth.key,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }));
+
+        this.save(CONSTANTS.STORAGE_KEYS.FIXED_EXPENSES, [...otherMonthFixed, ...resetFixed]);
+        return true;
+    },
+
+    /**
+     * Limpia todos los datos de un mes específico del localStorage
+     * Se usa cuando se elimina un archivo del historial
+     * IMPORTANTE: También limpia el mes siguiente porque resetForNewMonth() 
+     * crea gastos fijos automáticos para el próximo mes
+     * @param {string} monthKey - Clave del mes a limpiar (ej: "2026-01")
+     * @returns {boolean} Éxito de la operación
+     */
+    clearMonthData(monthKey) {
+        if (!monthKey) return false;
+
+        console.log(`🗑️ Limpiando datos del mes: ${monthKey}`);
+
+        // Calcular el mes siguiente (porque resetForNewMonth crea gastos para el siguiente mes)
+        const [year, month] = monthKey.split('-').map(Number);
+        const nextDate = new Date(year, month - 1); // month-1 porque Date usa 0-indexed
+        nextDate.setMonth(nextDate.getMonth() + 1); // Avanzar un mes
+        const nextMonthKey = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+        
+        console.log(`   También limpiando mes siguiente: ${nextMonthKey}`);
+
+        // Eliminar ingresos del mes y del siguiente
+        const incomes = this.getIncomes().filter(i => 
+            i.monthKey !== monthKey && i.monthKey !== nextMonthKey
+        );
+        this.save(CONSTANTS.STORAGE_KEYS.INCOMES, incomes);
+
+        // Eliminar gastos fijos del mes y del siguiente
+        const fixedExpenses = this.getFixedExpenses().filter(e => 
+            e.monthKey !== monthKey && e.monthKey !== nextMonthKey
+        );
+        this.save(CONSTANTS.STORAGE_KEYS.FIXED_EXPENSES, fixedExpenses);
+
+        // Eliminar gastos semanales del mes y del siguiente
+        const weeklyExpenses = this.getWeeklyExpenses().filter(e => 
+            e.monthKey !== monthKey && e.monthKey !== nextMonthKey
+        );
+        this.save(CONSTANTS.STORAGE_KEYS.WEEKLY_EXPENSES, weeklyExpenses);
+
+        // Eliminar comprobantes asociados al mes (buscar por expenseId)
+        const receipts = this.getReceipts();
+        const remainingReceipts = receipts.filter(receipt => {
+            if (!receipt.expenseId) return true;
+            const expense = fixedExpenses.find(e => e.id === receipt.expenseId);
+            return expense !== undefined; // Mantener solo si el gasto aún existe
+        });
+        this.save(CONSTANTS.STORAGE_KEYS.RECEIPTS, remainingReceipts);
+
+        console.log(`✅ Datos del mes ${monthKey} y ${nextMonthKey} eliminados correctamente`);
+        return true;
     },
 
     // ==========================================

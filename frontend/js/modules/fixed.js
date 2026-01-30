@@ -62,19 +62,25 @@ const FixedModule = {
             form.reset();
             
             // Preguntar si tiene factura
-            setTimeout(() => {
-                UI.showConfirm('¿Este servicio tiene factura?', () => {
-                    // SI tiene factura (es el comportamiento por defecto)
+            setTimeout(async () => {
+                const hasInvoice = await UI.showConfirm(
+                    '¿Este servicio tiene factura?', 
+                    'Si tiene factura, podrás escanear el código de barras para pagar.',
+                    {
+                        confirmText: 'SÍ, tiene factura',
+                        cancelText: 'NO, no tiene factura'
+                    }
+                );
+                
+                if (hasInvoice) {
                     Storage.updateFixedExpense(saved.id, { hasInvoice: true });
-                    this.render();
-                }, () => {
-                    // NO tiene factura
+                } else {
                     Storage.updateFixedExpense(saved.id, { 
                         hasInvoice: false,
                         status: CONSTANTS.EXPENSE_STATUS.PENDING 
                     });
-                    this.render();
-                });
+                }
+                this.render();
             }, 500);
 
             this.render();
@@ -89,26 +95,38 @@ const FixedModule = {
         }
     },
 
-    /**
-     * Elimina un gasto fijo
-     * @param {string} id - ID del gasto
-     */
-    delete(id) {
-        UI.showConfirm(CONSTANTS.MESSAGES.CONFIRM_DELETE_EXPENSE, () => {
-            const deleted = Storage.deleteFixedExpense(id);
+    async delete(id) {
+        const confirm = await UI.showConfirm(CONSTANTS.MESSAGES.CONFIRM_DELETE_EXPENSE);
+        if (!confirm) return;
+
+        const deleted = Storage.deleteFixedExpense(id);
+        
+        if (deleted) {
+            UI.showToast('Gasto fijo eliminado', 'success');
+            this.render();
             
-            if (deleted) {
-                UI.showToast('Gasto fijo eliminado', 'success');
-                this.render();
-                
-                if (typeof App !== 'undefined') {
-                    App.updateDashboard();
-                    WeeklyModule.updateBudgets();
-                }
-            } else {
-                UI.showToast(CONSTANTS.MESSAGES.ERROR_GENERIC, 'error');
+            if (typeof App !== 'undefined') {
+                App.updateDashboard();
+                WeeklyModule.updateBudgets();
             }
-        });
+        } else {
+            UI.showToast(CONSTANTS.MESSAGES.ERROR_GENERIC, 'error');
+        }
+    },
+
+    /**
+     * Edita el nombre de un gasto fijo
+     */
+    async editName(id) {
+        const expense = Storage.getFixedExpenses().find(e => e.id === id);
+        if (!expense) return;
+
+        const newName = prompt('Editar nombre del servicio:', expense.name);
+        if (newName && newName.trim() !== "" && newName !== expense.name) {
+            Storage.updateFixedExpense(id, { name: newName.trim() });
+            UI.showToast('Nombre actualizado', 'success');
+            this.render();
+        }
     },
 
     /**
@@ -234,18 +252,8 @@ const FixedModule = {
             const formData = new FormData();
             formData.append('invoice', file);
 
-            // Llamada al backend real
-            const response = await fetch('/api/invoice/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Error al procesar factura');
-            }
-
-            const result = await response.json();
+            // Llamada al backend real usando la vía profesional API
+            const result = await API.uploadInvoice(formData);
             const invoiceData = result.extracted;
 
             // Convertir archivo a base64 para preview local
@@ -255,11 +263,9 @@ const FixedModule = {
             this.showExtractionResults(expenseId, invoiceData, base64, file);
 
         } catch (error) {
-            console.error('Error uploading file:', error);
-            UI.showToast(error.message || CONSTANTS.MESSAGES.ERROR_GENERIC, 'error');
-            
-            // Volver a la ventana de carga en caso de error
-            this.openInvoiceModal(expenseId);
+            console.error('Error uploading invoice:', error);
+            UI.showToast(error.message || 'No se pudo procesar el comprobante. Verifique la conexión o el formato del archivo.', 'error');
+            this.openInvoiceModal(expenseId); // Volver al inicio si falla
         }
     },
 
@@ -627,6 +633,10 @@ const FixedModule = {
         container.querySelectorAll('.btn-delete').forEach(btn => {
             btn.addEventListener('click', () => this.delete(btn.dataset.id));
         });
+
+        container.querySelectorAll('.btn-edit-name').forEach(btn => {
+            btn.addEventListener('click', () => this.editName(btn.dataset.id));
+        });
     },
 
     /**
@@ -651,7 +661,12 @@ const FixedModule = {
                 </div>
                 
                 <div class="item-content">
-                    <div class="item-title">${expense.name}</div>
+                    <div class="item-title" style="display: flex; align-items: center; gap: 8px;">
+                        ${expense.name}
+                        <button class="btn-edit-name" data-id="${expense.id}" style="font-size: 0.8rem; color: var(--text-muted); padding: 0 4px; border-radius: 4px; background: var(--bg-hover);">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
                     <div class="item-subtitle">
                         <span class="status-badge status-${statusColor}">
                             <i class="bi ${statusIcon}"></i>

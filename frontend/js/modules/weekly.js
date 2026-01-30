@@ -78,21 +78,22 @@ const WeeklyModule = {
      * Elimina un gasto
      * @param {string} id - ID del gasto
      */
-    delete(id) {
-        UI.showConfirm(CONSTANTS.MESSAGES.CONFIRM_DELETE_EXPENSE, () => {
-            const deleted = Storage.deleteWeeklyExpense(id);
+    async delete(id) {
+        const confirm = await UI.showConfirm(CONSTANTS.MESSAGES.CONFIRM_DELETE_EXPENSE);
+        if (!confirm) return;
+
+        const deleted = Storage.deleteWeeklyExpense(id);
+        
+        if (deleted) {
+            UI.showToast('Gasto eliminado', 'success');
+            this.render();
             
-            if (deleted) {
-                UI.showToast('Gasto eliminado', 'success');
-                this.render();
-                
-                if (typeof App !== 'undefined') {
-                    App.updateDashboard();
-                }
-            } else {
-                UI.showToast(CONSTANTS.MESSAGES.ERROR_GENERIC, 'error');
+            if (typeof App !== 'undefined') {
+                App.updateDashboard();
             }
-        });
+        } else {
+            UI.showToast(CONSTANTS.MESSAGES.ERROR_GENERIC, 'error');
+        }
     },
 
     /**

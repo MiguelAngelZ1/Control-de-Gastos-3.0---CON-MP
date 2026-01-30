@@ -26,6 +26,7 @@ const App = {
             FixedModule.init();
             ReceiptsModule.init();
             PaymentsModule.init();
+            HistoryModule.init();
 
             // Inicializar inputs de dinero
             Utils.initMoneyInputs();
@@ -408,20 +409,18 @@ const App = {
                 throw new Error('Formato de archivo inválido');
             }
 
-            UI.showConfirm(
-                'Esto reemplazará todos tus datos actuales. ¿Continuar?',
-                () => {
-                    Storage.importAll(data);
-                    UI.showToast('Datos importados correctamente', 'success');
-                    
-                    // Recargar todo
-                    this.updateDashboard();
-                    IncomesModule.render();
-                    WeeklyModule.render();
-                    FixedModule.render();
-                    ReceiptsModule.render();
-                }
-            );
+            const confirm = await UI.showConfirm('Esto reemplazará todos tus datos actuales. ¿Continuar?');
+            if (confirm) {
+                Storage.importAll(data);
+                UI.showToast('Datos importados correctamente', 'success');
+                
+                // Recargar todo
+                this.updateDashboard();
+                IncomesModule.render();
+                WeeklyModule.render();
+                FixedModule.render();
+                ReceiptsModule.render();
+            }
         } catch (error) {
             console.error('Error importing data:', error);
             UI.showToast('Error al importar datos. Verificá el archivo.', 'error');
@@ -431,21 +430,19 @@ const App = {
     /**
      * Limpia todos los datos
      */
-    clearAllData() {
-        UI.showConfirm(
-            '⚠️ Esto eliminará TODOS tus datos. Esta acción no se puede deshacer. ¿Estás seguro?',
-            () => {
-                Storage.clear();
-                UI.showToast('Todos los datos han sido eliminados', 'success');
-                
-                // Recargar todo
-                this.updateDashboard();
-                IncomesModule.render();
-                WeeklyModule.render();
-                FixedModule.render();
-                ReceiptsModule.render();
-            }
-        );
+    async clearAllData() {
+        const confirm = await UI.showConfirm('⚠️ Esto eliminará TODOS tus datos. Esta acción no se puede deshacer. ¿Estás seguro?');
+        if (confirm) {
+            Storage.clear();
+            UI.showToast('Todos los datos han sido eliminados', 'success');
+            
+            // Recargar todo
+            this.updateDashboard();
+            IncomesModule.render();
+            WeeklyModule.render();
+            FixedModule.render();
+            ReceiptsModule.render();
+        }
     }
 };
 

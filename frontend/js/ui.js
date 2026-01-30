@@ -43,6 +43,15 @@ const UI = {
             overlay.addEventListener('click', () => this.closeSidebar());
         }
 
+        // Logo clickeable para Dashboard
+        const logo = document.getElementById('sidebar-logo-nav');
+        if (logo) {
+            logo.addEventListener('click', () => {
+                this.showTab('dashboard');
+                if (window.innerWidth <= 768) this.closeSidebar();
+            });
+        }
+
         // Cerrar sidebar al hacer click fuera
         document.addEventListener('click', (e) => {
             if (this.state.sidebarOpen && !e.target.closest('.sidebar') && !e.target.closest('#menu-toggle')) {
@@ -113,15 +122,18 @@ const UI = {
      */
     updatePageTitle(tabId) {
         const titles = {
-            dashboard: 'Dashboard',
-            incomes: 'Ingresos',
-            weekly: 'Gastos Semanales',
-            fixed: 'Gastos Fijos',
-            receipts: 'Comprobantes'
+            dashboard: { text: 'Dashboard', icon: 'bi-speedometer2' },
+            incomes: { text: 'Ingresos', icon: 'bi-arrow-down-circle' },
+            weekly: { text: 'Gastos Semanales', icon: 'bi-calendar-week' },
+            fixed: { text: 'Gastos Fijos', icon: 'bi-house' },
+            receipts: { text: 'Comprobantes', icon: 'bi-receipt' },
+            history: { text: 'Archivo', icon: 'bi-journal-bookmark' }
         };
+        
         const pageTitle = document.getElementById('page-title');
         if (pageTitle) {
-            pageTitle.textContent = titles[tabId] || 'Control de Gastos';
+            const titleData = titles[tabId] || { text: 'Control de Gastos', icon: 'bi-speedometer2' };
+            pageTitle.innerHTML = `<i class="bi ${titleData.icon}"></i> ${titleData.text}`;
         }
     },
 
@@ -294,37 +306,47 @@ const UI = {
     /**
      * Muestra un diálogo de confirmación
      * @param {string} message - Mensaje de confirmación
-     * @param {Function} onConfirm - Callback al confirmar
-     * @param {Function} onCancel - Callback al cancelar
+     * @param {string} subtitle - Subtítulo opcional
+     * @param {object} options - Opciones personalizadas (confirmText, cancelText)
      */
-    showConfirm(message, onConfirm, onCancel = () => {}) {
-        const modal = document.getElementById('confirm-modal');
-        if (!modal) return;
+    showConfirm(message, subtitle = "", options = {}) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirm-modal');
+            if (!modal) return resolve(false);
 
-        const messageEl = modal.querySelector('.confirm-message');
-        const confirmBtn = modal.querySelector('#confirm-yes');
-        const cancelBtn = modal.querySelector('#confirm-no');
+            const messageEl = modal.querySelector('.confirm-message');
+            const confirmBtn = modal.querySelector('#confirm-yes');
+            const cancelBtn = modal.querySelector('#confirm-no');
 
-        messageEl.textContent = message;
+            messageEl.innerHTML = `<strong>${message}</strong>${subtitle ? `<br><small style="color: var(--text-muted); font-size: 0.85rem; display: block; margin-top: 8px;">${subtitle}</small>` : ''}`;
 
-        // Limpiar eventos anteriores
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        const newCancelBtn = cancelBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            // Actualizar textos de botones si se proporcionan
+            const confirmText = options.confirmText || 'Sí, confirmar';
+            const cancelText = options.cancelText || 'Cancelar';
 
-        // Nuevos eventos
-        newConfirmBtn.addEventListener('click', () => {
-            this.closeModal('confirm-modal');
-            onConfirm();
+            // Limpiar eventos anteriores
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            
+            newConfirmBtn.textContent = confirmText;
+            newCancelBtn.textContent = cancelText;
+            
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+            // Nuevos eventos
+            newConfirmBtn.addEventListener('click', () => {
+                this.closeModal('confirm-modal');
+                resolve(true);
+            });
+
+            newCancelBtn.addEventListener('click', () => {
+                this.closeModal('confirm-modal');
+                resolve(false);
+            });
+
+            this.openModal('confirm-modal');
         });
-
-        newCancelBtn.addEventListener('click', () => {
-            this.closeModal('confirm-modal');
-            onCancel();
-        });
-
-        this.openModal('confirm-modal');
     },
 
     /**

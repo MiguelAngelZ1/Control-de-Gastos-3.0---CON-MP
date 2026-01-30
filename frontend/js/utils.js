@@ -59,6 +59,20 @@ const Utils = {
     },
 
     /**
+     * Obtiene el mes y año siguiente
+     * @returns {object} { month, year, key }
+     */
+    getNextMonthYear() {
+        const now = new Date();
+        const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        return {
+            month: next.getMonth(),
+            year: next.getFullYear(),
+            key: `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`
+        };
+    },
+
+    /**
      * Obtiene el nombre del mes
      * @param {number} month - Índice del mes (0-11)
      * @returns {string} Nombre del mes
@@ -75,12 +89,12 @@ const Utils = {
      * Calcula las 4 semanas del mes actual
      * @returns {Array} Array de objetos con info de cada semana
      */
-    getWeeksOfMonth() {
+    getWeeksOfMonth(month = null, year = null) {
         const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
+        const y = year ?? now.getFullYear();
+        const m = month ?? now.getMonth();
+        const firstDay = new Date(y, m, 1);
+        const lastDay = new Date(y, m + 1, 0);
         const totalDays = lastDay.getDate();
         
         // Dividir el mes en exactamente 4 semanas
@@ -91,15 +105,15 @@ const Utils = {
             const startDay = (weekNumber - 1) * daysPerWeek + 1;
             const endDay = weekNumber === 4 ? totalDays : Math.min(weekNumber * daysPerWeek, totalDays);
             
-            const weekStart = new Date(year, month, startDay);
-            const weekEnd = new Date(year, month, endDay);
+            const weekStart = new Date(y, m, startDay);
+            const weekEnd = new Date(y, m, endDay);
 
             weeks.push({
                 number: weekNumber,
                 start: weekStart,
                 end: weekEnd,
                 label: `Semana ${weekNumber}`,
-                range: `${startDay} - ${endDay} ${this.getMonthName(month)}`
+                range: `${startDay} - ${endDay} ${this.getMonthName(m)}`
             });
         }
 
@@ -117,6 +131,17 @@ const Utils = {
         const dayOfMonth = now.getDate();
         const weekNumber = Math.ceil(dayOfMonth / daysPerWeek);
         return Math.min(weekNumber, 4);
+    },
+
+    /**
+     * Parsea una key de mes (YYYY-MM) al índice del mes (0-11)
+     * @param {string} key - Formato "YYYY-MM"
+     * @returns {number} Índice del mes (0-11)
+     */
+    parseMonth(key) {
+        if (!key || typeof key !== 'string') return 0;
+        const parts = key.split('-');
+        return (parseInt(parts[1]) - 1) || 0;
     },
 
     /**

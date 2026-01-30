@@ -217,15 +217,15 @@
     }
     
     .chart-center {
-        width: 60% !important;
-        max-width: 80px !important;
+        width: 80% !important;
+        max-width: 120px !important;
+        overflow: visible !important;
     }
     
     .chart-value {
-        font-size: 0.75rem !important;
-        word-break: break-word;
-        overflow-wrap: break-word;
-        white-space: normal;
+        font-size: 0.85rem !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
         line-height: 1.2;
     }
     
@@ -252,6 +252,33 @@
     
     .simulation-actions .btn {
         width: 100%;
+    }
+    /* Historial / Archivo */
+    .history-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-4);
+    }
+
+    .history-card {
+        padding: var(--space-5);
+    }
+
+    .history-stat {
+        font-size: 0.9375rem;
+    }
+
+    .history-stat.balance-stat .value {
+        font-size: 1.25rem;
+    }
+
+    .history-card-footer {
+        margin-top: var(--space-5);
+    }
+
+    .dashboard-cards.mb-6 {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
     }
 }
 
