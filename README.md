@@ -94,16 +94,16 @@ Cada proveedor tiene reglas específicas para mejorar la precisión.
 
 ```
 /
-├── package.json
-├── README.md
-├── backend/
-│   ├── server.js          # Servidor Express
-│   ├── ocr.js              # Motor OCR (Tesseract.js)
-│   ├── invoice-parser.js   # 🧠 Parser inteligente (NUEVO)
-│   ├── barcode.js          # Detección de códigos
-│   └── utils.js            # Utilidades
-└── frontend/
-    └── index.html          # Interfaz de usuario
+├── package.json        # Configuración de Node.js y dependencias
+├── frontend/           # Todo el código del cliente
+│   ├── index.html      # Interfaz de usuario
+│   ├── css/            # Estilos (CSS)
+│   └── js/             # Lógica del cliente y módulos
+└── backend/            # Lógica del servidor e IA
+    ├── server.js       # Servidor principal (Express)
+    ├── groq-ai.js      # Integración con IA (Groq)
+    ├── ocr.js          # Motor de extracción de texto
+    └── invoice-parser.js # Motor de reglas local
 ```
 
 ## 🔧 API
