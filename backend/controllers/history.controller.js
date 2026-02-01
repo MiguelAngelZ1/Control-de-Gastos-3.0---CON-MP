@@ -32,22 +32,25 @@ exports.archiveMonth = async (req, res) => {
         const balance = parseFloat(summary.balance) || 0;
         const jsonData = JSON.stringify(fullData);
 
-        db.run(query, [
-            monthKey, 
-            req.body.monthName, 
-            req.body.year,
-            totalIncome, 
-            totalExpenses, 
-            balance, 
-            jsonData
-        ], function(err) {
-            if (err) {
-                console.error('❌ Error en SQLite:', err);
-                return res.status(500).json({ success: false, error: 'Hubo un problema al guardar el archivo en la base de datos.' });
-            }
-            console.log(`✅ Mes ${monthKey} archivado correctamente. ID: ${this.lastID}`);
-            res.json({ success: true, id: this.lastID });
+        db.serialize(() => {
+            db.run(query, [
+                monthKey, 
+                req.body.monthName, 
+                req.body.year,
+                totalIncome, 
+                totalExpenses, 
+                balance, 
+                jsonData
+            ], function(err) {
+                if (err) {
+                    console.error('❌ Error en SQLite:', err);
+                    return res.status(500).json({ success: false, error: 'Hubo un problema al guardar el archivo en la base de datos.' });
+                }
+                console.log(`✅ Mes ${monthKey} archivado correctamente. ID: ${this.lastID}`);
+                res.json({ success: true, id: this.lastID });
+            });
         });
+
     } catch (error) {
         console.error('❌ Error crítico al archivar:', error);
         res.status(500).json({ success: false, error: 'Error interno al procesar el cierre de mes.' });

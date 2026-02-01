@@ -14,76 +14,77 @@
  */
 
 const Groq = require('groq-sdk');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Cargar variables de entorno
 require('dotenv').config();
 
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY
-});
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
- * Analiza el texto de una factura usando Llama 3 en Groq
- * @param {string} text - Texto extraído por OCR
- * @returns {Promise<object>} - Datos extraídos
+ * Motor inteligente con Fallback: Groq -> Gemini -> Local
  */
-async function analyzeInvoiceWithGroq(text) {
-    if (!process.env.GROQ_API_KEY) {
-        console.warn('⚠️ GROQ_API_KEY no encontrada en .env. Usando fallback local.');
-        return null;
+async function analyzeInvoiceWithAI(text) {
+    // 1. Intentar con Groq (Llama 3.3)
+    if (process.env.GROQ_API_KEY) {
+        const groqResult = await analyzeWithGroq(text);
+        if (groqResult) return groqResult;
     }
 
+    // 2. Fallback a Gemini
+    if (process.env.GEMINI_API_KEY) {
+        console.warn('⚠️ Groq falló o no disponible. Intentando con Gemini...');
+        const geminiResult = await analyzeWithGemini(text);
+        if (geminiResult) return geminiResult;
+    }
+
+    console.warn('❌ No hay servicios de IA disponibles o fallaron. Se usará el extractor local.');
+    return null;
+}
+
+const SYSTEM_PROMPT = `Eres un experto en análisis de facturas de Argentina. Tu objetivo es extraer datos en JSON.
+INSTRUCCIONES:
+1. "provider": Empresa (Camuzzi, SCPL, Telecom, etc.).
+2. "customerName": Nombre del titular.
+3. "amount": Monto total (float).
+4. "dueDate": Fecha vencimiento (YYYY-MM-DD). En Camuzzi busca "¿HASTA CUANDO PUEDO PAGAR?".
+5. "barcode": Secuencia LARGA de números (40-60 dígitos). No la resumas.
+Responde SOLO JSON.`;
+
+async function analyzeWithGroq(text) {
     try {
-        console.log('🧠 Enviando texto a Groq AI (Llama 3)...');
-        
+        console.log('🧠 Enviando a Groq (Llama 3)...');
         const completion = await groq.chat.completions.create({
             messages: [
-                {
-                    role: "system",
-                    content: `Eres un experto en análisis de facturas de Argentina. Tu objetivo es extraer datos en JSON.
-                    
-                    INSTRUCCIONES DE EXTRACCIÓN:
-                    1. "provider": Identifica la empresa (Camuzzi, SCPL, etc.).
-                    2. "customerName": Nombre del titular (ej: Imperio Miguel Angel).
-                    3. "amount": Monto total. Usa punto para decimales (ej: 32644.98).
-                    4. "dueDate": Fecha de vencimiento real. 
-                       - IMPORTANTE: En Camuzzi, busca "¿HASTA CUANDO PUEDO PAGAR?". Esa es la fecha que me interesa (ej: 07/02/2026).
-                       - Ignora el "Vto:" del encabezado si encuentras el "Hasta cuando".
-                       - Formato de salida: YYYY-MM-DD.
-                    5. "barcode": El código numérico de barras. Es una secuencia LARGA de números (usualmente entre 40 y 60 dígitos). No la resumas ni inventes. Si no estás 100% seguro de la secuencia completa, devuelve null.
-                    
-                    REGLA DE ORO: No asumas que la factura es de una empresa específica. Analiza el texto cuidadosamente. Los montos en Argentina usan coma para decimales y punto para miles en el impreso, pero tú debes devolverlo en formato numérico (float).
-                    
-                    ESTRUCTURA DE RESPUESTA (JSON):
-                    {
-                        "provider": "Nombre Empresa",
-                        "customerName": "Nombre Cliente",
-                        "amount": 0000.00,
-                        "dueDate": "YYYY-MM-DD",
-                        "barcode": "00000000000000000000..." 
-                    }
-                    
-                    Responde SOLO el JSON. NO incluyas explicaciones.`
-
-                },
-                {
-                    role: "user",
-                    content: `Analiza el siguiente texto de una factura y extrae los datos:\n\n${text}`
-                }
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user", content: text }
             ],
             model: "llama-3.3-70b-versatile",
             temperature: 0,
             response_format: { type: "json_object" }
         });
-
-        const result = JSON.parse(completion.choices[0].message.content);
-        console.log('✅ Datos extraídos por Groq:', result);
-        return result;
-
-    } catch (error) {
-        console.error('❌ Error en Groq AI:', error);
+        return JSON.parse(completion.choices[0].message.content);
+    } catch (e) {
+        console.error('❌ Error Groq:', e.message);
         return null;
     }
 }
 
-module.exports = { analyzeInvoiceWithGroq };
+async function analyzeWithGemini(text) {
+    try {
+        console.log('✨ Enviando a Gemini...');
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const prompt = `${SYSTEM_PROMPT}\n\nTexto factura:\n${text}`;
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text();
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    } catch (e) {
+        console.error('❌ Error Gemini:', e.message);
+        return null;
+    }
+}
+
+module.exports = { analyzeInvoiceWithGroq: analyzeInvoiceWithAI };
+

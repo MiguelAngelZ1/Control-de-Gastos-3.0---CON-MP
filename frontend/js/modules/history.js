@@ -99,8 +99,11 @@ const HistoryModule = {
             if (result.success) {
                 UI.showToast('¡Mes archivado con éxito!', 'success');
                 Storage.resetForNewMonth();
-                window.location.reload();
+                setTimeout(() => {
+                    window.location.reload(true);
+                }, 1500);
             }
+
 
         } catch (error) {
             UI.showToast(error.message || 'No se pudo completar el cierre de mes.', 'danger');
