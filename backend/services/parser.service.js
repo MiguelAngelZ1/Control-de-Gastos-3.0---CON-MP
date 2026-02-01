@@ -197,22 +197,25 @@ class InvoiceParser {
         this.log('Buscando monto total...');
         const candidates = [];
         
-        // Limpiar texto de puntos de miles para evitar confusiones (ej: 1.234,56 -> 1234,56)
-        const cleanText = this.originalText.replace(/(\d)\.(\d{3})/g, '$1$2');
+        // Limpiar texto de puntos de miles para evitar confusiones (ej: 1.234.567,84 -> 1234567,84)
+        // Eliminamos puntos que están seguidos de 3 dígitos y luego otro punto o una coma
+        const cleanText = this.originalText
+            .replace(/(\d)\.(\d{3})(?=\.\d{3})/g, '$1$2') // Miles intermedios
+            .replace(/(\d)\.(\d{3})(?=[\s,])/g, '$1$2');  // Último grupo de miles
         
         // Patrones con contexto de alta prioridad
-        const highPriorityRegex = /(?:total a pagar|total factura|importe total|monto total|total vencimiento|total liquidación|total liquidacion|pagar|saldo total|monto a pagar|importe neto)[:\s]*\$?\s*(\d+[\.,]\d{2})/gi;
+        const highPriorityRegex = /(?:total a pagar|total factura|importe total|monto total|total vencimiento|total liquidación|total liquidacion|pagar|saldo total|monto a pagar|importe neto|total de la factura)[:\s]*\$?\s*(\d+[\.,]\d{2})/gi;
         let match;
         while ((match = highPriorityRegex.exec(cleanText)) !== null) {
             const val = parseFloat(match[1].replace(',', '.'));
-            if (val > 10) candidates.push({ val, weight: 100 });
+            if (val > 1) candidates.push({ val, weight: 100 });
         }
 
         // Patrones de prioridad media
         const midPriorityRegex = /(?:total|importe|monto|saldo|vencimiento)[:\s]*\$?\s*(\d+[\.,]\d{2})/gi;
         while ((match = midPriorityRegex.exec(cleanText)) !== null) {
             const val = parseFloat(match[1].replace(',', '.'));
-            if (val > 10) candidates.push({ val, weight: 70 });
+            if (val > 1) candidates.push({ val, weight: 70 });
         }
 
         if (candidates.length > 0) {
@@ -224,13 +227,14 @@ class InvoiceParser {
         } else {
             // Búsqueda desesperada: el número más grande con decimales
             const allNumbers = cleanText.match(/\d+[\.,]\d{2}/g) || [];
-            const vals = allNumbers.map(n => parseFloat(n.replace(',', '.'))).filter(v => v > 100 && v < 1000000);
+            const vals = allNumbers.map(n => parseFloat(n.replace(',', '.'))).filter(v => v > 10 && v < 2000000);
             if (vals.length > 0) {
                 this.results.amount = Math.max(...vals);
                 this.results.confidence.amount = 40;
                 this.log(`✓ Monto detectado (máximo encontrado): $${this.results.amount}`);
             }
         }
+
     }
 
     /**

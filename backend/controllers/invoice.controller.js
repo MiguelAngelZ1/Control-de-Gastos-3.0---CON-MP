@@ -8,6 +8,8 @@ const fs = require('fs');
 const ocrService = require('../services/ocr.service');
 const parserService = require('../services/parser.service');
 const aiService = require('../services/ai.service');
+const { validateBarcode } = require('../utils/barcode');
+
 
 /**
  * Procesa la subida y análisis de una factura
@@ -41,14 +43,23 @@ exports.uploadAndProcess = async (req, res) => {
         const localResults = parserService.parseInvoice(ocrResult.text);
         const groqResults = await aiService.analyzeInvoiceWithGroq(ocrResult.text);
         
-        // Fusión
+        // Fusión inteligente: Priorizar validación para códigos de barras
+        const groqBarcode = validateBarcode(groqResults?.barcode);
+        const localBarcode = validateBarcode(localResults.barcode);
+        
+        // Elegimos el código de barras que tenga mayor prioridad/longitud
+        const finalBarcode = (groqBarcode.priority >= localBarcode.priority && groqBarcode.valid) 
+            ? groqBarcode.cleaned 
+            : (localBarcode.valid ? localBarcode.cleaned : (groqResults?.barcode || localResults.barcode));
+
         const merged = {
             provider: groqResults?.provider || localResults.provider?.name || localResults.provider,
             customerName: groqResults?.customerName || localResults.customerName,
             amount: groqResults?.amount || localResults.amount,
             dueDate: groqResults?.dueDate || localResults.dueDate,
-            barcode: groqResults?.barcode || localResults.barcode
+            barcode: finalBarcode
         };
+
 
         const source = groqResults ? 'groq-ai' : 'local-hybrid';
 

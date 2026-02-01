@@ -50,9 +50,9 @@ async function analyzeInvoiceWithGroq(text) {
                        - IMPORTANTE: En Camuzzi, busca "¿HASTA CUANDO PUEDO PAGAR?". Esa es la fecha que me interesa (ej: 07/02/2026).
                        - Ignora el "Vto:" del encabezado si encuentras el "Hasta cuando".
                        - Formato de salida: YYYY-MM-DD.
-                    5. "barcode": El código numérico de barras (largo).
+                    5. "barcode": El código numérico de barras. Es una secuencia LARGA de números (usualmente entre 40 y 60 dígitos). No la resumas ni inventes. Si no estás 100% seguro de la secuencia completa, devuelve null.
                     
-                    REGLA DE ORO: No asumas que la factura es de una empresa específica. Analiza el texto cuidadosamente.
+                    REGLA DE ORO: No asumas que la factura es de una empresa específica. Analiza el texto cuidadosamente. Los montos en Argentina usan coma para decimales y punto para miles en el impreso, pero tú debes devolverlo en formato numérico (float).
                     
                     ESTRUCTURA DE RESPUESTA (JSON):
                     {
@@ -60,10 +60,11 @@ async function analyzeInvoiceWithGroq(text) {
                         "customerName": "Nombre Cliente",
                         "amount": 0000.00,
                         "dueDate": "YYYY-MM-DD",
-                        "barcode": "0000000000"
+                        "barcode": "00000000000000000000..." 
                     }
                     
-                    Responde SOLO el JSON.`
+                    Responde SOLO el JSON. NO incluyas explicaciones.`
+
                 },
                 {
                     role: "user",
